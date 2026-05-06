@@ -1,0 +1,21 @@
+Todos:
+
+- [x] Folosit proiect existent de la MAS
+- [x] schimbat numele la tot in Bear + a little bit of folder file restructure pentru separation of concerns and single responsibility
+- [ ] Create Bear Cell
+	- [x] Adaugat CellTypes (FOREST FIELD VILLAGE ROAD MOUNTAIN NONE)
+	- [x] Oare ce informatii ar mai fi necesare in Cell?
+		- [x] food amount
+			- [x] poate de facut sa scada cand un urs mananca de acolo si sa creasca over time (intr-un mod eficient)
+				- [ ] todo restoreRandomFood() de mutat intr-un loc mai bun
+		- [x] threat amount
+- [ ] Change Bear behaviour from vacuum to bear
+	- [x] look into neighbouring cells and decide (maybe also on a bit of a weighted probability) the next action
+	- [ ] reproducing
+	- [x] eating
+	- [ ] death
+	- [ ] very hungry (influenced behaviour to enter cities for food)
+- [ ] Simulation performance and functioning
+	- [ ] Verificari sa fie simulare cu discrete timing
+	- [ ] check if proper multi threading
+	- [ ] make distributed
