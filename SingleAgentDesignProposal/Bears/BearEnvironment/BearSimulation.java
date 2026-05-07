@@ -15,6 +15,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.LongAdder;
 
 /** A simulator for the vacuum cleaning world environment. */
 public class BearSimulation extends Simulation {
@@ -32,6 +33,7 @@ public class BearSimulation extends Simulation {
         this.environment.setInitialState(initState);
 		System.out.println("Creating bears...");
 		List<BearAgent> agentList = new ArrayList<BearAgent>();
+		BearSimulationBenchmark.Counters benchmark = Settings.BENCHMARK ? new BearSimulationBenchmark.Counters() : null;
 
 		for (int i = 0; i < Settings.AGENTS_NUMBER_SINGLE_EXECUTION; i++) {
             BearAgent bearAgent = new BearAgent(i, this.environment);
@@ -50,9 +52,23 @@ public class BearSimulation extends Simulation {
 			System.out.println("Bears started.");
 
 			long endTimeMillis = System.currentTimeMillis() + (Settings.SIMULATION_LENGTH * 1000L);
-			while (System.currentTimeMillis() < endTimeMillis) {
-				Map<Integer, Action> plannedActions = planActions(agentList, executor);
-				commitActions(agentList, plannedActions);
+			if (Settings.BENCHMARK) {
+				while (System.currentTimeMillis() < endTimeMillis) {
+					long loopStartNs = System.nanoTime();
+					long planStartNs = System.nanoTime();
+					BearSimulationBenchmark.PlanResult planResult = planActions(agentList, executor);
+					benchmark.recordPlan(System.nanoTime() - planStartNs, planResult.breakdown);
+
+					long commitStartNs = System.nanoTime();
+					BearSimulationBenchmark.CommitBreakdown commitBreakdown = commitActions(agentList, planResult.plannedActions);
+					benchmark.recordCommit(System.nanoTime() - commitStartNs, commitBreakdown);
+					benchmark.recordLoop(System.nanoTime() - loopStartNs);
+				}
+			} else {
+				while (System.currentTimeMillis() < endTimeMillis) {
+					Map<Integer, Action> plannedActions = planActionsNoBenchmark(agentList, executor);
+					commitActionsNoBenchmark(agentList, plannedActions);
+				}
 			}
 
             executor.shutdown();
@@ -61,14 +77,15 @@ public class BearSimulation extends Simulation {
             System.out.println("Exception during execution of Executor Service:");
             System.out.println(e);
         }
+		if (Settings.BENCHMARK && benchmark != null) {
+			benchmark.printSummary();
+		}
         System.out.println("END of setup.");
 	}
 
-	private Map<Integer, Action> planActions(List<BearAgent> agentList, ExecutorService executor) throws Exception {
+	private Map<Integer, Action> planActionsNoBenchmark(List<BearAgent> agentList, ExecutorService executor) throws Exception {
 		List<Callable<Map.Entry<Integer, Action>>> tasks = new ArrayList<Callable<Map.Entry<Integer, Action>>>();
 
-		// deferred unit of work for each agent - get percept and decide action
-		// these will be executed in parallel by the executor service later on with executor.invokeAll(tasks)
 		for (BearAgent bearAgent : agentList) {
 			tasks.add(() -> {
 				Percept percept = this.environment.getPercept(bearAgent);
@@ -77,17 +94,104 @@ public class BearSimulation extends Simulation {
 			});
 		}
 
-		// use the deferred unit of work in order to retrieve the planned action for each agent in parallel
 		Map<Integer, Action> plannedActions = new HashMap<Integer, Action>();
-		List<Future<Map.Entry<Integer, Action>>> futures = executor.invokeAll(tasks); // run the deferred units of work
-		for (Future<Map.Entry<Integer, Action>> future : futures) { // retrieve the planned action for each agent
-			Map.Entry<Integer, Action> plannedAction = future.get();  // the result for the futures is bearAgentId, plannedAction
+		List<Future<Map.Entry<Integer, Action>>> futures = executor.invokeAll(tasks);
+		for (Future<Map.Entry<Integer, Action>> future : futures) {
+			Map.Entry<Integer, Action> plannedAction = future.get();
 			plannedActions.put(plannedAction.getKey(), plannedAction.getValue());
 		}
 		return plannedActions;
 	}
 
-	private void commitActions(List<BearAgent> agentList, Map<Integer, Action> plannedActions) {
+	private BearSimulationBenchmark.PlanResult planActions(List<BearAgent> agentList, ExecutorService executor) throws Exception {
+		BearSimulationBenchmark.PlanBreakdown breakdown = new BearSimulationBenchmark.PlanBreakdown();
+		LongAdder perceptNsAdder = new LongAdder();
+		LongAdder decideActionNsAdder = new LongAdder();
+
+		long taskBuildStartNs = System.nanoTime();
+		List<Callable<Map.Entry<Integer, Action>>> tasks = new ArrayList<Callable<Map.Entry<Integer, Action>>>();
+
+		// deferred unit of work for each agent - get percept and decide action
+		// these will be executed in parallel by the executor service later on with executor.invokeAll(tasks)
+		for (BearAgent bearAgent : agentList) {
+			tasks.add(() -> {
+				long perceptStartNs = System.nanoTime();
+				Percept percept = this.environment.getPercept(bearAgent);
+				perceptNsAdder.add(System.nanoTime() - perceptStartNs);
+
+				long decideStartNs = System.nanoTime();
+				Action action = bearAgent.decideNextAction(percept);
+				decideActionNsAdder.add(System.nanoTime() - decideStartNs);
+				return Map.entry(bearAgent.getId(), action);
+			});
+		}
+		breakdown.taskBuildNs = System.nanoTime() - taskBuildStartNs;
+
+		// use the deferred unit of work in order to retrieve the planned action for each agent in parallel
+		Map<Integer, Action> plannedActions = new HashMap<Integer, Action>();
+		long invokeAllStartNs = System.nanoTime();
+		List<Future<Map.Entry<Integer, Action>>> futures = executor.invokeAll(tasks); // run the deferred units of work
+		breakdown.invokeAllNs = System.nanoTime() - invokeAllStartNs;
+
+		long collectFuturesStartNs = System.nanoTime();
+		for (Future<Map.Entry<Integer, Action>> future : futures) { // retrieve the planned action for each agent
+			Map.Entry<Integer, Action> plannedAction = future.get();  // the result for the futures is bearAgentId, plannedAction
+			plannedActions.put(plannedAction.getKey(), plannedAction.getValue());
+		}
+		breakdown.collectFuturesNs = System.nanoTime() - collectFuturesStartNs;
+		breakdown.perceptNs = perceptNsAdder.sum();
+		breakdown.decideActionNs = decideActionNsAdder.sum();
+
+		BearSimulationBenchmark.PlanResult result = new BearSimulationBenchmark.PlanResult();
+		result.plannedActions = plannedActions;
+		result.breakdown = breakdown;
+		return result;
+	}
+
+	private BearSimulationBenchmark.CommitBreakdown commitActions(List<BearAgent> agentList, Map<Integer, Action> plannedActions) {
+		BearSimulationBenchmark.CommitBreakdown breakdown = new BearSimulationBenchmark.CommitBreakdown();
+		BearState bearState = (BearState) this.environment.currentState();
+		BearActionEffects effects = new BearActionEffects();
+
+		long actionContributeStartNs = System.nanoTime();
+		for (BearAgent bearAgent : agentList) {
+			Action action = plannedActions.get(bearAgent.getId());
+			if (action == null) {
+				continue;
+			}
+
+			try {
+				action.contributeToStep(bearAgent, bearState, effects);
+			} catch (Exception e) {
+				System.out.println(e);
+			}
+			if (Settings.VERBOSE_AGENTS) {
+				System.out.println(" Action: " + action + ";  (" + bearAgent + ")");
+			}
+		}
+		breakdown.actionContributeNs = System.nanoTime() - actionContributeStartNs;
+
+		long applyFoodReductionsStartNs = System.nanoTime();
+		applyFoodReductions(bearState, effects);
+		breakdown.applyFoodReductionsNs = System.nanoTime() - applyFoodReductionsStartNs;
+
+		long applyMoveIntentsStartNs = System.nanoTime();
+		applyMoveIntents(bearState, effects);
+		breakdown.applyMoveIntentsNs = System.nanoTime() - applyMoveIntentsStartNs;
+
+		long restoreRandomFoodStartNs = System.nanoTime();
+        restoreRandomFood(); // todo move in another place
+		breakdown.restoreRandomFoodNs = System.nanoTime() - restoreRandomFoodStartNs;
+
+		long recordActionsStartNs = System.nanoTime();
+		for (int i = 0; i < effects.performedActions(); i++) {
+			bearState.agentPerformedAnAction();
+		}
+		breakdown.recordPerformedActionsNs = System.nanoTime() - recordActionsStartNs;
+		return breakdown;
+	}
+
+	private void commitActionsNoBenchmark(List<BearAgent> agentList, Map<Integer, Action> plannedActions) {
 		BearState bearState = (BearState) this.environment.currentState();
 		BearActionEffects effects = new BearActionEffects();
 
@@ -109,7 +213,7 @@ public class BearSimulation extends Simulation {
 
 		applyFoodReductions(bearState, effects);
 		applyMoveIntents(bearState, effects);
-        restoreRandomFood(); // todo move in another place
+		restoreRandomFood();
 
 		for (int i = 0; i < effects.performedActions(); i++) {
 			bearState.agentPerformedAnAction();
@@ -129,8 +233,6 @@ public class BearSimulation extends Simulation {
             bearState.reduceFood(coords.x, coords.y);
         }
     }
-
-
 
 	private void applyMoveIntents(BearState bearState, BearActionEffects effects) {
 		for (Map.Entry<Coords, List<Integer>> moveClaim : effects.moveClaimsByTarget().entrySet()) {

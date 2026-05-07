@@ -16,11 +16,4 @@ public class BearCell extends Cell {
         setFood(newCellType.randomFoodValue());
         setDanger(newCellType.randomDangerValue());
     }
-
-    public boolean whatever(Cell cell) {
-        if (cell.cellType() == BearCellType.FIELD) {
-
-        }
-        return false;
-    }
 }

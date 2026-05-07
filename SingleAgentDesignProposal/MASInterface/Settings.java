@@ -5,11 +5,12 @@ public final class Settings {
     public static int TEST_EXECUTIONS_PER_AGENT_NUMBER = 50;
     public static int MAP_LENGTH = 100;
     public static int THREAD_COUNT = 16;
-    public static int SIMULATION_LENGTH = 10; // in seconds
+    public static int SIMULATION_LENGTH = 100; // in seconds
 
-    public static boolean VERBOSE = true;
+    public static boolean VERBOSE = false;
     public static boolean VERBOSE_AGENTS = false;
     public static boolean VERBOSE_PERCEPT = false;
+    public static boolean BENCHMARK = true;
 
     public static double FOREST_PERCENTAGE = 0.25;
     public static double FIELD_PERCENTAGE = 0.55;
