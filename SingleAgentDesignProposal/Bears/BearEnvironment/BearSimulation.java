@@ -20,6 +20,10 @@ import java.util.concurrent.atomic.LongAdder;
 /** A simulator for the vacuum cleaning world environment. */
 public class BearSimulation extends Simulation {
 
+	private Map<Integer, BearAgent> agentsById;
+	private Map<DeathCause, Integer> deathCauseCounts;
+	private int lastAgentId;
+
 	public BearSimulation(BearEnvironment bearEnvironment) {
 		super(bearEnvironment);
 	}
@@ -32,17 +36,21 @@ public class BearSimulation extends Simulation {
 	public void startNoPrompt(State initState) {
         this.environment.setInitialState(initState);
 		System.out.println("Creating bears...");
-		List<BearAgent> agentList = new ArrayList<BearAgent>();
+		agentsById = new HashMap<Integer, BearAgent>();
+		deathCauseCounts = new HashMap<DeathCause, Integer>();
+		lastAgentId = -1;
 		BearSimulationBenchmark.Counters benchmark = Settings.BENCHMARK ? new BearSimulationBenchmark.Counters() : null;
 
 		for (int i = 0; i < Settings.AGENTS_NUMBER_SINGLE_EXECUTION; i++) {
-            BearAgent bearAgent = new BearAgent(i, this.environment);
+            BearAgent bearAgent = new BearAgent(i);
+            lastAgentId = bearAgent.getId();
             ((BearEnvironment) this.environment).setAgentRandomCoords(bearAgent.getId()); // put agent on a random location on map
             if (Settings.VERBOSE) {
                 System.out.println(bearAgent + " created.");
             }
-			agentList.add(bearAgent);
+			agentsById.put(bearAgent.getId(), bearAgent);
 		}
+		int initialBearCount = agentsById.size();
         ((BearState)initState).displayNoPrompt();
 
 		System.out.println("Bears created.");
@@ -54,20 +62,31 @@ public class BearSimulation extends Simulation {
 			long endTimeMillis = System.currentTimeMillis() + (Settings.SIMULATION_LENGTH * 1000L);
 			if (Settings.BENCHMARK) {
 				while (System.currentTimeMillis() < endTimeMillis) {
+					List<BearAgent> tickAgents = snapshotAgents();
+					if (tickAgents.isEmpty()) {
+						System.out.println("Bears went extinct after " + benchmark.ticks + " ticks.");
+						break;
+					}
+
 					long loopStartNs = System.nanoTime();
 					long planStartNs = System.nanoTime();
-					BearSimulationBenchmark.PlanResult planResult = planActions(agentList, executor);
+					BearSimulationBenchmark.PlanResult planResult = planActions(tickAgents, executor);
 					benchmark.recordPlan(System.nanoTime() - planStartNs, planResult.breakdown);
 
 					long commitStartNs = System.nanoTime();
-					BearSimulationBenchmark.CommitBreakdown commitBreakdown = commitActions(agentList, planResult.plannedActions);
+					BearSimulationBenchmark.CommitBreakdown commitBreakdown = commitActions(planResult.plannedActions);
 					benchmark.recordCommit(System.nanoTime() - commitStartNs, commitBreakdown);
 					benchmark.recordLoop(System.nanoTime() - loopStartNs);
 				}
 			} else {
 				while (System.currentTimeMillis() < endTimeMillis) {
-					Map<Integer, Action> plannedActions = planActionsNoBenchmark(agentList, executor);
-					commitActionsNoBenchmark(agentList, plannedActions);
+					List<BearAgent> tickAgents = snapshotAgents();
+					if (tickAgents.isEmpty()) {
+						break;
+					}
+
+					Map<Integer, Action> plannedActions = planActionsNoBenchmark(tickAgents, executor);
+					commitActionsNoBenchmark(plannedActions);
 				}
 			}
 
@@ -80,7 +99,27 @@ public class BearSimulation extends Simulation {
 		if (Settings.BENCHMARK && benchmark != null) {
 			benchmark.printSummary();
 		}
+
+		System.out.println("Initial bear count: " + initialBearCount);
+		System.out.println("End bear count: " + agentsById.size());
+		printDeathCauseSummary();
         System.out.println("END of setup.");
+	}
+
+	private void printDeathCauseSummary() {
+		System.out.println("Death causes:");
+		if (deathCauseCounts.isEmpty()) {
+			System.out.println(" - none");
+			return;
+		}
+
+		for (Map.Entry<DeathCause, Integer> deathCauseCount : deathCauseCounts.entrySet()) {
+			System.out.println(" - " + deathCauseCount.getKey() + ": " + deathCauseCount.getValue());
+		}
+	}
+
+	private List<BearAgent> snapshotAgents() {
+		return new ArrayList<BearAgent>(agentsById.values());
 	}
 
 	private Map<Integer, Action> planActionsNoBenchmark(List<BearAgent> agentList, ExecutorService executor) throws Exception {
@@ -148,15 +187,19 @@ public class BearSimulation extends Simulation {
 		return result;
 	}
 
-	private BearSimulationBenchmark.CommitBreakdown commitActions(List<BearAgent> agentList, Map<Integer, Action> plannedActions) {
+	private BearSimulationBenchmark.CommitBreakdown commitActions(Map<Integer, Action> plannedActions) {
 		BearSimulationBenchmark.CommitBreakdown breakdown = new BearSimulationBenchmark.CommitBreakdown();
 		BearState bearState = (BearState) this.environment.currentState();
 		BearActionEffects effects = new BearActionEffects();
 
 		long actionContributeStartNs = System.nanoTime();
-		for (BearAgent bearAgent : agentList) {
-			Action action = plannedActions.get(bearAgent.getId());
+		for (Map.Entry<Integer, Action> plannedAction : plannedActions.entrySet()) {
+			BearAgent bearAgent = agentsById.get(plannedAction.getKey());
+			Action action = plannedAction.getValue();
 			if (action == null) {
+				continue;
+			}
+			if (bearAgent == null) {
 				continue;
 			}
 
@@ -170,6 +213,14 @@ public class BearSimulation extends Simulation {
 			}
 		}
 		breakdown.actionContributeNs = System.nanoTime() - actionContributeStartNs;
+
+		long applyDeathsStartNs = System.nanoTime();
+		applyDeaths(effects);
+		breakdown.applyDeathsNs = System.nanoTime() - applyDeathsStartNs;
+
+		long applyReproductionsStartNs = System.nanoTime();
+		applyReproductions(effects);
+		breakdown.applyReproductionsNs = System.nanoTime() - applyReproductionsStartNs;
 
 		long applyFoodReductionsStartNs = System.nanoTime();
 		applyFoodReductions(bearState, effects);
@@ -191,13 +242,17 @@ public class BearSimulation extends Simulation {
 		return breakdown;
 	}
 
-	private void commitActionsNoBenchmark(List<BearAgent> agentList, Map<Integer, Action> plannedActions) {
+	private void commitActionsNoBenchmark(Map<Integer, Action> plannedActions) {
 		BearState bearState = (BearState) this.environment.currentState();
 		BearActionEffects effects = new BearActionEffects();
 
-		for (BearAgent bearAgent : agentList) {
-			Action action = plannedActions.get(bearAgent.getId());
+		for (Map.Entry<Integer, Action> plannedAction : plannedActions.entrySet()) {
+			BearAgent bearAgent = agentsById.get(plannedAction.getKey());
+			Action action = plannedAction.getValue();
 			if (action == null) {
+				continue;
+			}
+			if (bearAgent == null) {
 				continue;
 			}
 
@@ -211,6 +266,8 @@ public class BearSimulation extends Simulation {
 			}
 		}
 
+		applyDeaths(effects);
+		applyReproductions(effects);
 		applyFoodReductions(bearState, effects);
 		applyMoveIntents(bearState, effects);
 		restoreRandomFood();
@@ -229,15 +286,39 @@ public class BearSimulation extends Simulation {
     }
 
     private void applyFoodReductions(BearState bearState, BearActionEffects effects) {
-        for (Coords coords : effects.foodReductions()) {
+        for (Coords coords : effects.eatIntents()) {
             bearState.reduceFood(coords.x, coords.y);
+        }
+    }
+
+	private void applyReproductions(BearActionEffects effects) {
+        for (Integer motherAgentId : effects.reproduceIntents()) {
+            BearAgent childAgent = new BearAgent(++lastAgentId, 0);
+            ((BearEnvironment) this.environment).setMotherCoords(childAgent.getId(), motherAgentId); // put agent on the moother location on map
+            if (Settings.VERBOSE) {
+                System.out.println(childAgent + " created.");
+            }
+			agentsById.put(childAgent.getId(), childAgent);
+        }
+    }
+
+	private void applyDeaths(BearActionEffects effects) {
+		for (Map.Entry<Integer, DeathCause> dieIntent : effects.dieIntents().entrySet()) {
+			Integer agentId = dieIntent.getKey();
+			DeathCause deathCause = dieIntent.getValue();
+
+            ((BearEnvironment) this.environment).removeAgent(agentId); // remove agent from simulation
+			BearAgent removedAgent = agentsById.remove(agentId);
+			deathCauseCounts.merge(deathCause, 1, Integer::sum);
+            if (Settings.VERBOSE) {
+				System.out.println((removedAgent != null ? removedAgent : ("Robot#" + agentId)) + " removed. Cause: " + deathCause);
+            }
         }
     }
 
 	private void applyMoveIntents(BearState bearState, BearActionEffects effects) {
 		for (Map.Entry<Coords, List<Integer>> moveClaim : effects.moveClaimsByTarget().entrySet()) {
-			if (moveClaim.getValue().size() == 1) {
-				int agentId = moveClaim.getValue().get(0);
+			for (Integer agentId : moveClaim.getValue()) {
 				bearState.updateAgentCoords(agentId, moveClaim.getKey());
 			}
 		}

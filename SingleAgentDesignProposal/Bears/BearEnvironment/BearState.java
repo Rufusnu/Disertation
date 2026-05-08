@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -43,7 +42,7 @@ public class BearState extends State {
 
 	protected int mapLength;
 	private volatile int agentsActions = 0;
-    private HashSet<Coords> occupiedTiles = new HashSet<>();
+	private Map<Coords, Integer> occupiedTileCounts = new HashMap<Coords, Integer>();
 
 	/** Returns the default initial state for the vacuum world. */
 	public static BearState getInitState(int mapLength) {
@@ -74,6 +73,10 @@ public class BearState extends State {
 	public void setAgentRandomCoords(int agentId) {
 		putAgent(agentId, getFreeTile());
 	}
+
+    public void setMotherCoords(Integer childAgentId, Integer motherAgentId) {
+        putAgent(childAgentId, getAgentCoords(motherAgentId));
+    }
 
     private Coords getRandomTile() {
         int upperbound = mapLength() - 2; // 0->(nIndex-2)
@@ -149,8 +152,8 @@ public class BearState extends State {
 
 	/** Returns true if in the specified location is an agent. */
 	public boolean isAgentOnTile(Coords coords) {
-//		return agentsCoords.containsValue(coords);
-        return occupiedTiles.contains(coords);
+		Integer occupants = occupiedTileCounts.get(coords);
+		return occupants != null && occupants > 0;
 	}
 
 	/** Returns true if the location is within bounds of the state's map. */
@@ -208,20 +211,51 @@ public class BearState extends State {
 	/** Updates the coordinates value of an agents using its Id as identification. */
 	public void updateAgentCoords(int agentId, Coords coords) {
 //		agentsCoords.replace(agentId, coords);
-        Coords oldCoords = agentsCoords.get(agentId);
-        if (oldCoords != null) occupiedTiles.remove(oldCoords); // remove old position
-        agentsCoords.replace(agentId, coords);
-        occupiedTiles.add(coords);
+		Coords oldCoords = agentsCoords.get(agentId);
+		if (oldCoords != null) {
+			decrementOccupancy(oldCoords);
+		}
+		agentsCoords.replace(agentId, coords);
+		incrementOccupancy(coords);
 	}
 
 	/** Insert the agent for the first time in the hashmap. */
 	public void putAgent(int agentId, Coords coords) {
 		if (!agentsCoords.containsKey(agentId)) {
-            agentsCoords.put(agentId, coords);
-            occupiedTiles.add(coords);
+			agentsCoords.put(agentId, coords);
+			incrementOccupancy(coords);
 		} else {
 			System.out.println("There is already an MASInterface.Agent with id: " + agentId);
 		}
+	}
+
+	/** Removes an agent from the state by id. */
+	public void removeAgent(int agentId) {
+		Coords oldCoords = agentsCoords.remove(agentId);
+		if (oldCoords != null) {
+			decrementOccupancy(oldCoords);
+		}
+	}
+
+	private void incrementOccupancy(Coords coords) {
+		Integer current = occupiedTileCounts.get(coords);
+		if (current == null) {
+			occupiedTileCounts.put(coords, 1);
+			return;
+		}
+		occupiedTileCounts.put(coords, current + 1);
+	}
+
+	private void decrementOccupancy(Coords coords) {
+		Integer current = occupiedTileCounts.get(coords);
+		if (current == null) {
+			return;
+		}
+		if (current <= 1) {
+			occupiedTileCounts.remove(coords);
+			return;
+		}
+		occupiedTileCounts.put(coords, current - 1);
 	}
 
 	public void agentPerformedAnAction() {

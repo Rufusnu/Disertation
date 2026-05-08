@@ -23,7 +23,7 @@ public class Move extends Action {
         BearState bearState = BearState.requireBearState(state, "Move.contributeToStep()");
         BearActionEffects effects = (BearActionEffects) context;
 
-        if (target != null && !bearState.isWall(target.x, target.y) && !bearState.isAgentOnTile(target)) {
+        if (target != null && !bearState.isWall(target.x, target.y)) {
             effects.requestMove(agent.getId(), target);
         }
 

@@ -5,30 +5,22 @@ import Bears.BearEnvironment.BearState;
 import MASInterface.Agent.Action;
 import MASInterface.Agent.Agent;
 import MASInterface.Agent.StepActionContext;
-import MASInterface.Environment.Coords;
 import MASInterface.Environment.State;
 
-/**
- * A vacuum cleaning world action that causes the agent to suck up dirt from it
- * current location.
- */
-public class Eat extends Action {
+/** An action that represents the agent doing nothing this tick. */
+public class Nothing extends Action {
 
-	public Eat() {
-
+	public Nothing() {
 	}
 
     @Override
     public void contributeToStep(Agent agent, State state, StepActionContext context) {
-        BearState bearState = BearState.requireBearState(state, "Eat.contributeToStep()");
+        BearState.requireBearState(state, "Nothing.contributeToStep()");
         BearActionEffects effects = (BearActionEffects) context;
-
-        Coords agentCoords = bearState.getAgentCoords(agent.getId());
-        effects.requestEatIntents(new Coords(agentCoords.x, agentCoords.y));
         effects.recordAction();
     }
 
 	public String toString() {
-		return " (EAT FOOD)";
+		return "(NOTHING)";
 	}
 }

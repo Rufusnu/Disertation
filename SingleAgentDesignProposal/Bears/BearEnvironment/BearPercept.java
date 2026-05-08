@@ -72,7 +72,7 @@ public class BearPercept extends Percept {
 		neighbors = new ArrayList<NeighborCellInfo>();
 		for (Coords neighbor : state.getNeighborCoords8(agent.getId())) {
 			BearCell cell = state.getBearCell(neighbor.x, neighbor.y);
-			boolean isBlocked = state.isBlocked(neighbor.x, neighbor.y);
+			boolean isBlocked = state.isWall(neighbor.x, neighbor.y);
 			double food = cell == null ? -1 : cell.food();
 			double danger = cell == null ? -1 : cell.danger();
 			neighbors.add(new NeighborCellInfo(neighbor, food, danger, isBlocked));

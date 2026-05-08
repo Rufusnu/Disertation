@@ -12,23 +12,22 @@ import MASInterface.Environment.State;
  * A vacuum cleaning world action that causes the agent to suck up dirt from it
  * current location.
  */
-public class Eat extends Action {
+public class Reproduce extends Action {
 
-	public Eat() {
+	public Reproduce() {
 
 	}
 
     @Override
     public void contributeToStep(Agent agent, State state, StepActionContext context) {
-        BearState bearState = BearState.requireBearState(state, "Eat.contributeToStep()");
+        BearState bearState = BearState.requireBearState(state, "Reproduce.contributeToStep()");
         BearActionEffects effects = (BearActionEffects) context;
-
-        Coords agentCoords = bearState.getAgentCoords(agent.getId());
-        effects.requestEatIntents(new Coords(agentCoords.x, agentCoords.y));
+        
+        effects.requestReproduce(agent.getId());
         effects.recordAction();
     }
 
 	public String toString() {
-		return " (EAT FOOD)";
+		return " (REPRODUCE)";
 	}
 }

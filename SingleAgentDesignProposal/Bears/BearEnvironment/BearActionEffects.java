@@ -13,16 +13,23 @@ import java.util.Set;
 /** Collects all action intents for a single simulation tick. */
 public class BearActionEffects implements StepActionContext {
     private final Map<Integer, Coords> moveIntents = new HashMap<Integer, Coords>();
-    private final Set<Coords> foodReductions = new HashSet<Coords>();
+    private final Set<Integer> reproduceIntents = new HashSet<>();
+    private final Set<Coords> eatIntents = new HashSet<>();
+    private final Map<Integer, DeathCause> dieIntents = new HashMap<Integer, DeathCause>();
     private int performedActions = 0;
 
     public void requestMove(int agentId, Coords target) {
         moveIntents.put(agentId, target);
     }
-    public void requestFoodReduction(Coords coords) {
-        foodReductions.add(coords);
+    public void requestEatIntents(Coords coords) {
+        eatIntents.add(coords);
     }
-
+    public void requestReproduce(int agentId) {
+        reproduceIntents.add(agentId);
+    }
+    public void requestDie(int agentId, DeathCause cause) {
+        dieIntents.put(agentId, cause);
+    }
 
     public void recordAction() {
         performedActions++;
@@ -36,8 +43,14 @@ public class BearActionEffects implements StepActionContext {
         return claimantsByTarget;
     }
 
-    public Set<Coords> foodReductions() {
-        return foodReductions;
+    public Set<Coords> eatIntents() {
+        return eatIntents;
+    }
+    public Set<Integer> reproduceIntents() {
+        return reproduceIntents;
+    }
+    public Map<Integer, DeathCause> dieIntents() {
+        return dieIntents;
     }
 
     public int performedActions() {

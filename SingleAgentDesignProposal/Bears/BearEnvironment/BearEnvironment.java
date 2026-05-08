@@ -48,4 +48,12 @@ public class BearEnvironment extends Environment{
     public void restoreRandomFood() {
         ((BearState)state).restoreRandomFood();
     }
+
+    public void setMotherCoords(Integer childAgentId, Integer motherAgentId) {
+        ((BearState)state).setMotherCoords(childAgentId, motherAgentId);
+    }
+
+    public void removeAgent(Integer agentId) {
+      ((BearState)state).removeAgent(agentId);
+    }
 }
