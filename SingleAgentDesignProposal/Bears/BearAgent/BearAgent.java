@@ -4,7 +4,7 @@ import Bears.BearAgent.Actions.Die;
 import Bears.BearAgent.Actions.Eat;
 import Bears.BearAgent.Actions.Move;
 import Bears.BearAgent.Actions.Nothing;
-import Bears.BearAgent.Actions.Reproduce;
+import Bears.BearAgent.Actions.GiveBirth;
 import Bears.BearEnvironment.BearPercept;
 import Bears.BearEnvironment.DeathCause;
 import MASInterface.Agent.Action;
@@ -30,6 +30,8 @@ public class BearAgent extends Agent {
     private double age;
     private double reproductionCooldownYearsRemaining;
     private double satiety;
+    private double gestationPeriod;
+    private boolean isPregnant;
 
     public BearAgent(int id) {
         this(id,
@@ -47,6 +49,8 @@ public class BearAgent extends Agent {
         this.gender = gender;
         this.reproductionCooldownYearsRemaining = 0;
         this.satiety = ThreadLocalRandom.current().nextDouble(Settings.BEAR_INITIAL_SATIETY_MIN, Settings.BEAR_INITIAL_SATIETY_MAX);
+        this.gestationPeriod = 0;
+        this.isPregnant = false;
     }
 
     private static Gender randomGender() {
@@ -66,10 +70,7 @@ public class BearAgent extends Agent {
     }
 
     public Action selectAction() {
-        // age 1 hour
-        age += Settings.ONE_TICK_IN_YEARS;
-        reproductionCooldownYearsRemaining = Math.max(0, reproductionCooldownYearsRemaining - Settings.ONE_TICK_IN_YEARS);
-        satiety = Math.max(0, satiety - Settings.BEAR_SATIETY_DECAY_PER_TICK);
+        passTime();
 
         // check if death came
         if (satiety <= 0) {
@@ -82,13 +83,19 @@ public class BearAgent extends Agent {
 
         // danger on the current tile kills probabilistically
         double danger = currentPercept.currentCell() != null ? currentPercept.currentCell().danger() : 0;
-        if (danger > 0 && ThreadLocalRandom.current().nextDouble() < danger * Settings.BEAR_DANGER_DEATH_RATE_PER_TICK) {
+        if (danger > 0 && ThreadLocalRandom.current().nextDouble() < danger * Settings.BEAR_DANGER_DEATH_RATE_PER_TICK * ageDangerMultiplier()) {
             return new Die(DeathCause.DANGER);
         }
 
         if (canGiveBirthNow()) {
             reproductionCooldownYearsRemaining = Settings.BEAR_REPRODUCTION_COOLDOWN_YEARS;
-            return new Reproduce();
+            isPregnant = false;
+            return new GiveBirth();
+        }
+
+        if (canReproduceNow()) {
+            isPregnant = true;
+            gestationPeriod = Settings.BEAR_GESTATION_PERIOD_YEARS;
         }
 
         BearPercept.NeighborCellInfo current = currentPercept.currentCell();
@@ -113,6 +120,14 @@ public class BearAgent extends Agent {
         return new Nothing(); // no food here, no better neighbor — wait
     }
 
+    private void passTime() {
+        // age 1 hour
+        age += Settings.ONE_TICK_IN_YEARS;
+        reproductionCooldownYearsRemaining = Math.max(0, reproductionCooldownYearsRemaining - Settings.ONE_TICK_IN_YEARS);
+        gestationPeriod = Math.max(0, gestationPeriod - Settings.ONE_TICK_IN_YEARS);
+        satiety = Math.max(0, satiety - Settings.BEAR_SATIETY_DECAY_PER_TICK * satietyPregnantMultiplier());
+    }
+
     private void applySatietyFromEating(BearPercept.NeighborCellInfo cell) {
         if (cell == null) {
             return;
@@ -128,6 +143,13 @@ public class BearAgent extends Agent {
     }
 
     private boolean canGiveBirthNow() {
+        return gestationPeriod <= 0 && isPregnant;
+    }
+
+    private boolean canReproduceNow() {
+        if (isPregnant) {
+            return false;
+        }
         if (gender != Gender.FEMALE) {
             return false;
         }
@@ -138,6 +160,14 @@ public class BearAgent extends Agent {
             return false;
         }
         return reproductionCooldownYearsRemaining <= 0;
+    }
+
+    private double ageDangerMultiplier() {
+        return age <= Settings.BEAR_MIN_REPRODUCTION_AGE ? Settings.BEAR_DANGER_CHILD_MULTIPLIER : 1;
+    }
+
+    private double satietyPregnantMultiplier() {
+        return isPregnant ? Settings.BEAR_SATIETY_DECAY_PER_TICK_PREGNANT_DEBUFF : 1;
     }
 
     private BearPercept.NeighborCellInfo chooseBestNeighbor(

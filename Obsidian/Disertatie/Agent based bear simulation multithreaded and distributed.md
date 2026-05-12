@@ -16,8 +16,9 @@ Todos:
 		- [ ] male needed
 		- [ ] issue: female can reproduce repeatedly (cooldown only)
 		- [ ] longer birth interval
-		- [ ] gestation/nursing constraint
-		- [ ] juvenile penalties
+		- [x] gestation period
+		- [ ] nursing constraint
+		- [x] juvenile penalties (bigger chance of dying multiplier applied to the probability of dying to danger)
 		- [ ] density/carrying-capacity effects
 		- [x] cooldown
 		- [ ] time until birth

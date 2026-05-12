@@ -218,9 +218,9 @@ public class BearSimulation extends Simulation {
 		applyDeaths(effects);
 		breakdown.applyDeathsNs = System.nanoTime() - applyDeathsStartNs;
 
-		long applyReproductionsStartNs = System.nanoTime();
-		applyReproductions(effects);
-		breakdown.applyReproductionsNs = System.nanoTime() - applyReproductionsStartNs;
+		long applyBirthsStartNs = System.nanoTime();
+		applyBirths(effects);
+		breakdown.applyBirthsNs = System.nanoTime() - applyBirthsStartNs;
 
 		long applyFoodReductionsStartNs = System.nanoTime();
 		applyFoodReductions(bearState, effects);
@@ -267,7 +267,7 @@ public class BearSimulation extends Simulation {
 		}
 
 		applyDeaths(effects);
-		applyReproductions(effects);
+		applyBirths(effects);
 		applyFoodReductions(bearState, effects);
 		applyMoveIntents(bearState, effects);
 		restoreRandomFood();
@@ -291,10 +291,10 @@ public class BearSimulation extends Simulation {
         }
     }
 
-	private void applyReproductions(BearActionEffects effects) {
-        for (Integer motherAgentId : effects.reproduceIntents()) {
+	private void applyBirths(BearActionEffects effects) {
+        for (Integer motherAgentId : effects.birthIntents()) {
             BearAgent childAgent = new BearAgent(++lastAgentId, 0);
-            ((BearEnvironment) this.environment).setMotherCoords(childAgent.getId(), motherAgentId); // put agent on the moother location on map
+            ((BearEnvironment) this.environment).setMotherCoords(childAgent.getId(), motherAgentId); // put agent on the mother location on map
             if (Settings.VERBOSE) {
                 System.out.println(childAgent + " created.");
             }

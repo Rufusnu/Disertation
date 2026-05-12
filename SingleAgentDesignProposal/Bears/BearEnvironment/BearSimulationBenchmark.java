@@ -24,7 +24,7 @@ final class BearSimulationBenchmark {
 	static final class CommitBreakdown {
 		long actionContributeNs;
 		long applyDeathsNs;
-		long applyReproductionsNs;
+		long applyBirthsNs;
 		long applyFoodReductionsNs;
 		long applyMoveIntentsNs;
 		long restoreRandomFoodNs;
@@ -43,7 +43,7 @@ final class BearSimulationBenchmark {
 		long totalCommitActionsNs;
 		long totalActionContributeNs;
 		long totalApplyDeathsNs;
-		long totalApplyReproductionsNs;
+		long totalApplyBirthsNs;
 		long totalApplyFoodReductionsNs;
 		long totalApplyMoveIntentsNs;
 		long totalRestoreRandomFoodNs;
@@ -62,7 +62,7 @@ final class BearSimulationBenchmark {
 			totalCommitActionsNs += commitActionsNs;
 			totalActionContributeNs += breakdown.actionContributeNs;
 			totalApplyDeathsNs += breakdown.applyDeathsNs;
-			totalApplyReproductionsNs += breakdown.applyReproductionsNs;
+			totalApplyBirthsNs += breakdown.applyBirthsNs;
 			totalApplyFoodReductionsNs += breakdown.applyFoodReductionsNs;
 			totalApplyMoveIntentsNs += breakdown.applyMoveIntentsNs;
 			totalRestoreRandomFoodNs += breakdown.restoreRandomFoodNs;
@@ -79,7 +79,7 @@ final class BearSimulationBenchmark {
 			long totalPlanUnaccountedNs = Math.max(0L, totalPlanActionsNs - totalPlanAccountedNs);
 			long totalCommitAccountedNs = totalActionContributeNs
 					+ totalApplyDeathsNs
-					+ totalApplyReproductionsNs
+					+ totalApplyBirthsNs
 					+ totalApplyFoodReductionsNs
 					+ totalApplyMoveIntentsNs
 					+ totalRestoreRandomFoodNs
@@ -99,7 +99,7 @@ final class BearSimulationBenchmark {
 			System.out.println("Commit actions: " + toMillis(totalCommitActionsNs) + " ms (" + percentage(totalCommitActionsNs, totalLoopNs) + "%)");
 			System.out.println("  - Action contribute: " + toMillis(totalActionContributeNs) + " ms");
 			System.out.println("  - Apply deaths: " + toMillis(totalApplyDeathsNs) + " ms");
-			System.out.println("  - Apply reproductions: " + toMillis(totalApplyReproductionsNs) + " ms");
+			System.out.println("  - Apply Births: " + toMillis(totalApplyBirthsNs) + " ms");
 			System.out.println("  - Apply food reductions: " + toMillis(totalApplyFoodReductionsNs) + " ms");
 			System.out.println("  - Apply move intents: " + toMillis(totalApplyMoveIntentsNs) + " ms");
 			System.out.println("  - Restore random food: " + toMillis(totalRestoreRandomFoodNs) + " ms");
