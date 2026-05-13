@@ -32,6 +32,8 @@ public class BearAgent extends Agent {
     private double satiety;
     private double gestationPeriod;
     private boolean isPregnant;
+    private int homeX;
+    private int homeY;
 
     public BearAgent(int id) {
         this(id,
@@ -51,6 +53,8 @@ public class BearAgent extends Agent {
         this.satiety = ThreadLocalRandom.current().nextDouble(Settings.BEAR_INITIAL_SATIETY_MIN, Settings.BEAR_INITIAL_SATIETY_MAX);
         this.gestationPeriod = 0;
         this.isPregnant = false;
+        this.homeX = -1;
+        this.homeY = -1;
     }
 
     private static Gender randomGender() {
@@ -99,6 +103,7 @@ public class BearAgent extends Agent {
         }
 
         BearPercept.NeighborCellInfo current = currentPercept.currentCell();
+    initializeHomeRegion(current);
 
         // hungry bears eat immediately if there is any food on current tile
         if (satiety < Settings.BEAR_SATIETY_EAT_PREFERENCE_THRESHOLD && currentTileHasEnoughFood(current)) {
@@ -209,13 +214,51 @@ public class BearAgent extends Agent {
                 hunger
         );
         double crowdingWeight = weightedByHunger(
-            Settings.BEAR_MOVEMENT_CROWDING_WEIGHT_WHEN_FULL,
-            Settings.BEAR_MOVEMENT_CROWDING_WEIGHT_WHEN_HUNGRY,
-            hunger
+                Settings.BEAR_MOVEMENT_CROWDING_WEIGHT_WHEN_FULL,
+                Settings.BEAR_MOVEMENT_CROWDING_WEIGHT_WHEN_HUNGRY,
+                hunger
         );
+        double homeRangeWeight = weightedByHunger(
+                Settings.BEAR_MOVEMENT_HOME_RANGE_WEIGHT_WHEN_FULL,
+                Settings.BEAR_MOVEMENT_HOME_RANGE_WEIGHT_WHEN_HUNGRY,
+                hunger
+        );
+        double randomNoise = randomMovementNoise(hunger);
         return foodWeight * neighbor.food()
-            - dangerWeight * neighbor.danger()
-            - crowdingWeight * neighbor.nearbyBearCount();
+                - dangerWeight * neighbor.danger()
+                - crowdingWeight * neighbor.nearbyBearCount()
+                - homeRangeWeight * homeRangePenalty(neighbor)
+                + randomNoise;
+    }
+
+    private void initializeHomeRegion(BearPercept.NeighborCellInfo currentCell) {
+        if (homeX != -1 || currentCell == null) {
+            return;
+        }
+
+        homeX = currentCell.coords().x;
+        homeY = currentCell.coords().y;
+    }
+
+    private int homeRangePenalty(BearPercept.NeighborCellInfo neighbor) {
+        if (homeX == -1) {
+            return 0;
+        }
+
+        int distanceFromHome = Math.max(
+                Math.abs(neighbor.coords().x - homeX),
+                Math.abs(neighbor.coords().y - homeY)
+        );
+        return Math.max(0, distanceFromHome - Settings.BEAR_HOME_RANGE_RADIUS);
+    }
+
+    private double randomMovementNoise(double hunger) {
+        double noiseMagnitude = weightedByHunger(
+                Settings.BEAR_MOVEMENT_RANDOM_NOISE_WHEN_FULL,
+                Settings.BEAR_MOVEMENT_RANDOM_NOISE_WHEN_HUNGRY,
+                hunger
+        );
+        return ThreadLocalRandom.current().nextDouble(-noiseMagnitude, noiseMagnitude);
     }
 
     private double hungerLevel() {
