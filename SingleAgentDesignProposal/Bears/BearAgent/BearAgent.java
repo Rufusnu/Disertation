@@ -197,9 +197,26 @@ public class BearAgent extends Agent {
     }
 
     private double scoreNeighbor(BearPercept.NeighborCellInfo neighbor) {
-        double foodWeight = 1.0;
-        double dangerWeight = 1.25;
+        double hunger = hungerLevel();
+        double foodWeight = weightedByHunger(
+                Settings.BEAR_MOVEMENT_FOOD_WEIGHT_WHEN_FULL,
+                Settings.BEAR_MOVEMENT_FOOD_WEIGHT_WHEN_HUNGRY,
+                hunger
+        );
+        double dangerWeight = weightedByHunger(
+                Settings.BEAR_MOVEMENT_DANGER_WEIGHT_WHEN_FULL,
+                Settings.BEAR_MOVEMENT_DANGER_WEIGHT_WHEN_HUNGRY,
+                hunger
+        );
         return foodWeight * neighbor.food() - dangerWeight * neighbor.danger();
+    }
+
+    private double hungerLevel() {
+        return 1 - Math.min(Settings.BEAR_SATIETY_MAX, satiety) / Settings.BEAR_SATIETY_MAX;
+    }
+
+    private double weightedByHunger(double fullWeight, double hungryWeight, double hunger) {
+        return fullWeight + (hungryWeight - fullWeight) * hunger;
     }
 
     public String toString() {

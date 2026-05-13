@@ -64,12 +64,16 @@ r \approx \frac{\ln(6.7)}{13} \approx 0.146
 
 So roughly **14–15% net annual growth**.
 
-That is plausible for your rules because you currently have:
 
-- no male needed,
-- female can reproduce repeatedly (cooldown only),
-- no gestation/nursing constraint,
-- limited juvenile penalties.
 
-For real bear populations, that growth is usually too high over long periods.  
-If you want realism, reduce growth by adding one or more of: mate requirement, juvenile mortality, longer interbirth interval, reproductive age window, and density/carrying-capacity effects.
+
+Yes. The current movement is very “greedy”: each bear scores neighbors mostly by food/danger and moves to the best cell if it beats staying. That can make many agents drift toward the same high-food / low-danger areas and form unnatural clusters.
+
+More natural options:
+
+- **Add randomness / bounded rationality**: choose among good cells probabilistically instead of always picking the single best one.
+- **Prefer unoccupied / low-density areas**: subtract a crowding penalty from cells near other bears.
+- **Use hunger-dependent movement**: hungry bears prioritize food strongly; full bears wander, rest, or avoid other bears.
+- **Add exploration behavior**: sometimes move randomly or continue in a loose direction instead of constantly optimizing.
+- **Make food depletion matter locally**: if many bears gather, food should drop quickly, pushing them away naturally.
+- **Add home ranges / territories**: bears prefer staying within a personal region and avoid other adult bears.

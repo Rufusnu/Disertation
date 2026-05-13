@@ -51,6 +51,10 @@ public final class Settings {
     public static double BEAR_SATIETY_GAIN_PER_EAT = 0.35;
     public static double BEAR_SATIETY_EAT_PREFERENCE_THRESHOLD = 0.75; // bear prefers to eat instead of moving when satiety is above this
     public static double BEAR_MIN_SATIETY_TO_REPRODUCE = 0.6;
+    public static double BEAR_MOVEMENT_FOOD_WEIGHT_WHEN_FULL = 0.25;
+    public static double BEAR_MOVEMENT_FOOD_WEIGHT_WHEN_HUNGRY = 2.0;
+    public static double BEAR_MOVEMENT_DANGER_WEIGHT_WHEN_FULL = 1.6;
+    public static double BEAR_MOVEMENT_DANGER_WEIGHT_WHEN_HUNGRY = 1.0;
     public static double BEAR_MAX_AGE = 30;
     public static double DEATH_RATE_AFTER_MAX_AGE = 0.000020; // ~20% per year
     public static double BEAR_DANGER_DEATH_RATE_PER_TICK = 0.0000085; // ~20% lifetime risk on forest, ~50% on village
