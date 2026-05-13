@@ -13,6 +13,7 @@ public class BearPercept extends Percept {
 	protected boolean blocked;
 	private NeighborCellInfo currentCell;
 	private List<NeighborCellInfo> neighbors;
+	private boolean nearbyMaleBear;
 
 	public static class NeighborCellInfo {
 		private final Coords coords;
@@ -66,6 +67,7 @@ public class BearPercept extends Percept {
 		double currentFood = currentBearCell == null ? -1 : currentBearCell.food();
 		double currentDanger = currentBearCell == null ? -1 : currentBearCell.danger();
 		currentCell = new NeighborCellInfo(new Coords(x, y), currentFood, currentDanger, false);
+		nearbyMaleBear = state.hasNearbyMaleBear(agent.getId());
 
 		blocked = false;
 
@@ -95,6 +97,10 @@ public class BearPercept extends Percept {
 
 	public NeighborCellInfo currentCell() {
 		return currentCell;
+	}
+
+	public boolean nearbyMaleBear() {
+		return nearbyMaleBear;
 	}
 
 	public String toString() {

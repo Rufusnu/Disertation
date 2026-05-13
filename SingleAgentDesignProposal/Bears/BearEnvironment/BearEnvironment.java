@@ -1,6 +1,6 @@
 package Bears.BearEnvironment;
 
-import MASInterface.Agent.Action;
+import Bears.BearAgent.BearAgent;
 import MASInterface.Agent.Agent;
 import MASInterface.Environment.Environment;
 import MASInterface.Agent.Percept;
@@ -42,6 +42,10 @@ public class BearEnvironment extends Environment{
 
   public void setAgentRandomCoords(int agentId) {
     ((BearState)state).setAgentRandomCoords(agentId);
+  }
+
+  public void setAgentGender(int agentId, BearAgent.Gender gender) {
+    ((BearState)state).setAgentGender(agentId, gender);
   }
 
 

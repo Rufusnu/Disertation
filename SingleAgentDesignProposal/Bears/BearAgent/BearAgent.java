@@ -93,7 +93,7 @@ public class BearAgent extends Agent {
             return new GiveBirth();
         }
 
-        if (canReproduceNow()) {
+        if (canReproduceNow() && currentPercept.nearbyMaleBear()) {
             isPregnant = true;
             gestationPeriod = Settings.BEAR_GESTATION_PERIOD_YEARS;
         }

@@ -1,5 +1,6 @@
 package Bears.BearEnvironment;
 
+import Bears.BearAgent.BearAgent;
 import MASInterface.Environment.Cell;
 import MASInterface.Environment.State;
 import MASInterface.Environment.Coords;
@@ -35,6 +36,8 @@ public class BearState extends State {
 
 	/* Variables for the state of the agent. */
 	protected HashMap<Integer, Coords> agentsCoords;
+	private Map<Integer, BearAgent.Gender> agentGenders;
+    private Map<Coords, Integer> maleTileCounts;
 
 	/** An array that contains the locations of objects in the world. */
 	protected int[][] map;
@@ -53,6 +56,8 @@ public class BearState extends State {
 		state.mapLength = mapLength;
 		state.generateMap(state);
 		state.agentsCoords = new HashMap<Integer, Coords>();
+		state.agentGenders = new HashMap<Integer, BearAgent.Gender>();
+		state.maleTileCounts = new HashMap<Coords, Integer>();
 		state.agentsActions = 0;
 		return state;
 	}
@@ -72,6 +77,21 @@ public class BearState extends State {
 
 	public void setAgentRandomCoords(int agentId) {
 		putAgent(agentId, getFreeTile());
+	}
+
+	public void setAgentGender(int agentId, BearAgent.Gender gender) {
+		BearAgent.Gender previousGender = agentGenders.put(agentId, gender);
+		Coords coords = agentsCoords.get(agentId);
+		if (coords == null) {
+			return;
+		}
+
+		if (previousGender == BearAgent.Gender.MALE && gender != BearAgent.Gender.MALE) {
+			decrementMaleOccupancy(coords);
+		}
+		if (previousGender != BearAgent.Gender.MALE && gender == BearAgent.Gender.MALE) {
+			incrementMaleOccupancy(coords);
+		}
 	}
 
     public void setMotherCoords(Integer childAgentId, Integer motherAgentId) {
@@ -208,15 +228,40 @@ public class BearState extends State {
 		return new Coords(-1,-1);
 	}
 
+	public boolean hasNearbyMaleBear(int agentId) {
+		Coords agentCoords = getAgentCoords(agentId);
+		if (agentCoords.x == -1 || agentCoords.y == -1) {
+			return false;
+		}
+
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dy = -1; dy <= 1; dy++) {
+				Coords coords = new Coords(agentCoords.x + dx, agentCoords.y + dy);
+				if (maleTileCounts.getOrDefault(coords, 0) > 0) {
+				return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
 	/** Updates the coordinates value of an agents using its Id as identification. */
 	public void updateAgentCoords(int agentId, Coords coords) {
 //		agentsCoords.replace(agentId, coords);
 		Coords oldCoords = agentsCoords.get(agentId);
+		BearAgent.Gender gender = agentGenders.get(agentId);
 		if (oldCoords != null) {
 			decrementOccupancy(oldCoords);
+			if (gender == BearAgent.Gender.MALE) {
+				decrementMaleOccupancy(oldCoords);
+			}
 		}
 		agentsCoords.replace(agentId, coords);
 		incrementOccupancy(coords);
+		if (gender == BearAgent.Gender.MALE) {
+			incrementMaleOccupancy(coords);
+		}
 	}
 
 	/** Insert the agent for the first time in the hashmap. */
@@ -224,6 +269,9 @@ public class BearState extends State {
 		if (!agentsCoords.containsKey(agentId)) {
 			agentsCoords.put(agentId, coords);
 			incrementOccupancy(coords);
+			if (agentGenders.get(agentId) == BearAgent.Gender.MALE) {
+				incrementMaleOccupancy(coords);
+			}
 		} else {
 			System.out.println("There is already an MASInterface.Agent with id: " + agentId);
 		}
@@ -232,9 +280,34 @@ public class BearState extends State {
 	/** Removes an agent from the state by id. */
 	public void removeAgent(int agentId) {
 		Coords oldCoords = agentsCoords.remove(agentId);
+		BearAgent.Gender gender = agentGenders.remove(agentId);
 		if (oldCoords != null) {
 			decrementOccupancy(oldCoords);
+			if (gender == BearAgent.Gender.MALE) {
+				decrementMaleOccupancy(oldCoords);
+			}
 		}
+	}
+
+	private void incrementMaleOccupancy(Coords coords) {
+		Integer current = maleTileCounts.get(coords);
+		if (current == null) {
+			maleTileCounts.put(coords, 1);
+			return;
+		}
+		maleTileCounts.put(coords, current + 1);
+	}
+
+	private void decrementMaleOccupancy(Coords coords) {
+		Integer current = maleTileCounts.get(coords);
+		if (current == null) {
+			return;
+		}
+		if (current <= 1) {
+			maleTileCounts.remove(coords);
+			return;
+		}
+		maleTileCounts.put(coords, current - 1);
 	}
 
 	private void incrementOccupancy(Coords coords) {
@@ -280,7 +353,7 @@ public class BearState extends State {
 		BufferedReader console = new BufferedReader(new InputStreamReader(
 				System.in));
 		try {
-			String input = console.readLine();
+			console.readLine();
 		} catch (IOException e) {
 			System.out.println(e.getMessage());
 			return;

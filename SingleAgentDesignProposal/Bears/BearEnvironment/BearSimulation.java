@@ -45,6 +45,7 @@ public class BearSimulation extends Simulation {
             BearAgent bearAgent = new BearAgent(i);
             lastAgentId = bearAgent.getId();
             ((BearEnvironment) this.environment).setAgentRandomCoords(bearAgent.getId()); // put agent on a random location on map
+			((BearEnvironment) this.environment).setAgentGender(bearAgent.getId(), bearAgent.getGender());
             if (Settings.VERBOSE) {
                 System.out.println(bearAgent + " created.");
             }
@@ -295,6 +296,7 @@ public class BearSimulation extends Simulation {
         for (Integer motherAgentId : effects.birthIntents()) {
             BearAgent childAgent = new BearAgent(++lastAgentId, 0);
             ((BearEnvironment) this.environment).setMotherCoords(childAgent.getId(), motherAgentId); // put agent on the mother location on map
+			((BearEnvironment) this.environment).setAgentGender(childAgent.getId(), childAgent.getGender());
             if (Settings.VERBOSE) {
                 System.out.println(childAgent + " created.");
             }
