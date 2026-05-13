@@ -1,7 +1,6 @@
 package Bears.BearEnvironment;
 
 import Bears.BearAgent.BearAgent;
-import MASInterface.Environment.Cell;
 import MASInterface.Environment.State;
 import MASInterface.Environment.Coords;
 import MASInterface.Settings;
@@ -9,9 +8,7 @@ import MASInterface.Settings;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -31,21 +28,20 @@ public class BearState extends State {
 
     // topology
     //
-	private static final int CLEAR = 0;
 	private static final int BLOCKED = 2;
 
 	/* Variables for the state of the agent. */
-	protected HashMap<Integer, Coords> agentsCoords;
+	protected Map<Integer, Coords> agentsCoords;
 	private Map<Integer, BearAgent.Gender> agentGenders;
-    private Map<Coords, Integer> maleTileCounts;
+	private int[][] agentCounts;
+	private int[][] maleAgentCounts;
 
 	/** An array that contains the locations of objects in the world. */
 	protected int[][] map;
-    protected Cell[][] cellGrid;
+    protected BearCell[][] cellGrid;
 
 	protected int mapLength;
 	private volatile int agentsActions = 0;
-	private Map<Coords, Integer> occupiedTileCounts = new HashMap<Coords, Integer>();
 
 	/** Returns the default initial state for the vacuum world. */
 	public static BearState getInitState(int mapLength) {
@@ -57,7 +53,8 @@ public class BearState extends State {
 		state.generateMap(state);
 		state.agentsCoords = new HashMap<Integer, Coords>();
 		state.agentGenders = new HashMap<Integer, BearAgent.Gender>();
-		state.maleTileCounts = new HashMap<Coords, Integer>();
+		state.agentCounts = new int[mapLength][mapLength];
+		state.maleAgentCounts = new int[mapLength][mapLength];
 		state.agentsActions = 0;
 		return state;
 	}
@@ -128,7 +125,7 @@ public class BearState extends State {
 	}
 
     private void generateRandomCells(BearState state) {
-        state.cellGrid = new Cell[state.mapLength][state.mapLength];
+		state.cellGrid = new BearCell[state.mapLength][state.mapLength];
         for (int i = 0; i < state.mapLength; i++) {
             for (int j = 0; j < state.mapLength; j++) {
                 state.cellGrid[i][j] = new BearCell();
@@ -140,14 +137,14 @@ public class BearState extends State {
 		for (int i = 1; i < state.mapLength; i++) {
 			state.map[i][0] = BLOCKED;
 			state.map[i][mapLength - 1] = BLOCKED;
-            ((BearCell) state.cellGrid[i][0]).setBearCellType(BearCellType.NONE);
-            ((BearCell) state.cellGrid[i][mapLength - 1]).setBearCellType(BearCellType.NONE);
+            state.cellGrid[i][0].setBearCellType(BearCellType.NONE);
+            state.cellGrid[i][mapLength - 1].setBearCellType(BearCellType.NONE);
 		}
 		for (int j = 0; j < state.mapLength; j++) {
 			state.map[0][j] = BLOCKED;
 			state.map[mapLength - 1][j] = BLOCKED;
-            ((BearCell) state.cellGrid[0][j]).setBearCellType(BearCellType.NONE);
-            ((BearCell) state.cellGrid[mapLength - 1][j]).setBearCellType(BearCellType.NONE);
+            state.cellGrid[0][j].setBearCellType(BearCellType.NONE);
+            state.cellGrid[mapLength - 1][j].setBearCellType(BearCellType.NONE);
 		}
 	}
 
@@ -160,7 +157,7 @@ public class BearState extends State {
 
 	/** Returns true if the specified location is a wall. */
 	public boolean isBlocked(int x, int y) {
-		return map[x][y] == BLOCKED || isAgentOnTile(new Coords(x, y));
+		return map[x][y] == BLOCKED || agentCount(x, y) > 0;
 	}
 
 	/** Returns true if the specified location is a wall cell, ignoring agent occupancy. */
@@ -172,8 +169,7 @@ public class BearState extends State {
 
 	/** Returns true if in the specified location is an agent. */
 	public boolean isAgentOnTile(Coords coords) {
-		Integer occupants = occupiedTileCounts.get(coords);
-		return occupants != null && occupants > 0;
+		return agentCount(coords.x, coords.y) > 0;
 	}
 
 	/** Returns true if the location is within bounds of the state's map. */
@@ -181,38 +177,12 @@ public class BearState extends State {
 		return x >= 0 && x < mapLength && y >= 0 && y < mapLength;
 	}
 
-	/** Returns all valid neighboring coordinates for 8-direction movement. */
-	public List<Coords> getNeighborCoords8(int agentId) {
-		Coords center = getAgentCoords(agentId);
-		List<Coords> neighbors = new ArrayList<Coords>();
-		if (center.x == -1 || center.y == -1) {
-			return neighbors;
-		}
-
-		for (int dx = -1; dx <= 1; dx++) {
-			for (int dy = -1; dy <= 1; dy++) {
-				if (dx == 0 && dy == 0) {
-					continue;
-				}
-				int nx = center.x + dx;
-				int ny = center.y + dy;
-				if (inBounds(nx, ny)) {
-					neighbors.add(new Coords(nx, ny));
-				}
-			}
-		}
-		return neighbors;
-	}
-
 	/** Returns the bear cell at coordinates, or null when unavailable. */
 	public BearCell getBearCell(int x, int y) {
 		if (!inBounds(x, y)) {
 			return null;
 		}
-		if (cellGrid[x][y] instanceof BearCell) {
-			return (BearCell) cellGrid[x][y];
-		}
-		return null;
+		return cellGrid[x][y];
 	}
 
 	/** Returns the map length. */
@@ -233,17 +203,40 @@ public class BearState extends State {
 		if (agentCoords.x == -1 || agentCoords.y == -1) {
 			return false;
 		}
+		BearAgent.Gender gender = agentGenders.get(agentId);
 
 		for (int dx = -1; dx <= 1; dx++) {
 			for (int dy = -1; dy <= 1; dy++) {
-				Coords coords = new Coords(agentCoords.x + dx, agentCoords.y + dy);
-				if (maleTileCounts.getOrDefault(coords, 0) > 0) {
-				return true;
+				int x = agentCoords.x + dx;
+				int y = agentCoords.y + dy;
+				int nearbyMales = maleCount(x, y);
+				if (dx == 0 && dy == 0 && gender == BearAgent.Gender.MALE) {
+					nearbyMales--;
+				}
+				if (nearbyMales > 0) {
+					return true;
 				}
 			}
 		}
 
 		return false;
+	}
+
+	public int nearbyBearCount(int agentId, Coords center) {
+		Coords agentCoords = getAgentCoords(agentId);
+		int nearbyBears = 0;
+
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dy = -1; dy <= 1; dy++) {
+				nearbyBears += agentCount(center.x + dx, center.y + dy);
+			}
+		}
+
+		if (Math.abs(agentCoords.x - center.x) <= 1 && Math.abs(agentCoords.y - center.y) <= 1) {
+			nearbyBears--;
+		}
+
+		return Math.max(0, nearbyBears);
 	}
 
 	/** Updates the coordinates value of an agents using its Id as identification. */
@@ -290,45 +283,41 @@ public class BearState extends State {
 	}
 
 	private void incrementMaleOccupancy(Coords coords) {
-		Integer current = maleTileCounts.get(coords);
-		if (current == null) {
-			maleTileCounts.put(coords, 1);
-			return;
+		if (inBounds(coords.x, coords.y)) {
+			maleAgentCounts[coords.x][coords.y]++;
 		}
-		maleTileCounts.put(coords, current + 1);
 	}
 
 	private void decrementMaleOccupancy(Coords coords) {
-		Integer current = maleTileCounts.get(coords);
-		if (current == null) {
-			return;
+		if (inBounds(coords.x, coords.y) && maleAgentCounts[coords.x][coords.y] > 0) {
+			maleAgentCounts[coords.x][coords.y]--;
 		}
-		if (current <= 1) {
-			maleTileCounts.remove(coords);
-			return;
-		}
-		maleTileCounts.put(coords, current - 1);
 	}
 
 	private void incrementOccupancy(Coords coords) {
-		Integer current = occupiedTileCounts.get(coords);
-		if (current == null) {
-			occupiedTileCounts.put(coords, 1);
-			return;
+		if (inBounds(coords.x, coords.y)) {
+			agentCounts[coords.x][coords.y]++;
 		}
-		occupiedTileCounts.put(coords, current + 1);
 	}
 
 	private void decrementOccupancy(Coords coords) {
-		Integer current = occupiedTileCounts.get(coords);
-		if (current == null) {
-			return;
+		if (inBounds(coords.x, coords.y) && agentCounts[coords.x][coords.y] > 0) {
+			agentCounts[coords.x][coords.y]--;
 		}
-		if (current <= 1) {
-			occupiedTileCounts.remove(coords);
-			return;
+	}
+
+	private int agentCount(int x, int y) {
+		if (!inBounds(x, y)) {
+			return 0;
 		}
-		occupiedTileCounts.put(coords, current - 1);
+		return agentCounts[x][y];
+	}
+
+	private int maleCount(int x, int y) {
+		if (!inBounds(x, y)) {
+			return 0;
+		}
+		return maleAgentCounts[x][y];
 	}
 
 	public void agentPerformedAnAction() {
@@ -372,8 +361,7 @@ public class BearState extends State {
 					" +",
 					"---+",
 					(x, y) -> {
-						Coords coords = new Coords(x, y);
-						if (isAgentOnTile(coords)) {
+						if (agentCount(x, y) > 0) {
 							return AGENT_CELL_SYMBOL;
 						}
 						return EMPTY_CELL_SYMBOL;

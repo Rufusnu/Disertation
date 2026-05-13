@@ -20,12 +20,14 @@ public class BearPercept extends Percept {
 		private final double food;
 		private final double danger;
 		private final boolean blocked;
+		private final int nearbyBearCount;
 
-		public NeighborCellInfo(Coords coords, double food, double danger, boolean blocked) {
+		public NeighborCellInfo(Coords coords, double food, double danger, boolean blocked, int nearbyBearCount) {
 			this.coords = coords;
 			this.food = food;
 			this.danger = danger;
 			this.blocked = blocked;
+			this.nearbyBearCount = nearbyBearCount;
 		}
 
 		public Coords coords() {
@@ -42,6 +44,10 @@ public class BearPercept extends Percept {
 
 		public boolean blocked() {
 			return blocked;
+		}
+
+		public int nearbyBearCount() {
+			return nearbyBearCount;
 		}
 	}
 
@@ -66,18 +72,32 @@ public class BearPercept extends Percept {
 		BearCell currentBearCell = state.getBearCell(x, y);
 		double currentFood = currentBearCell == null ? -1 : currentBearCell.food();
 		double currentDanger = currentBearCell == null ? -1 : currentBearCell.danger();
-		currentCell = new NeighborCellInfo(new Coords(x, y), currentFood, currentDanger, false);
+		Coords currentCoords = new Coords(x, y);
+		currentCell = new NeighborCellInfo(currentCoords, currentFood, currentDanger, false, state.nearbyBearCount(agent.getId(), currentCoords));
 		nearbyMaleBear = state.hasNearbyMaleBear(agent.getId());
 
 		blocked = false;
 
 		neighbors = new ArrayList<NeighborCellInfo>();
-		for (Coords neighbor : state.getNeighborCoords8(agent.getId())) {
-			BearCell cell = state.getBearCell(neighbor.x, neighbor.y);
-			boolean isBlocked = state.isWall(neighbor.x, neighbor.y);
-			double food = cell == null ? -1 : cell.food();
-			double danger = cell == null ? -1 : cell.danger();
-			neighbors.add(new NeighborCellInfo(neighbor, food, danger, isBlocked));
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dy = -1; dy <= 1; dy++) {
+				if (dx == 0 && dy == 0) {
+					continue;
+				}
+
+				int neighborX = x + dx;
+				int neighborY = y + dy;
+				if (!state.inBounds(neighborX, neighborY)) {
+					continue;
+				}
+
+				Coords neighbor = new Coords(neighborX, neighborY);
+				BearCell cell = state.getBearCell(neighborX, neighborY);
+				boolean isBlocked = state.isWall(neighborX, neighborY);
+				double food = cell == null ? -1 : cell.food();
+				double danger = cell == null ? -1 : cell.danger();
+				neighbors.add(new NeighborCellInfo(neighbor, food, danger, isBlocked, state.nearbyBearCount(agent.getId(), neighbor)));
+			}
 		}
 
 	}
