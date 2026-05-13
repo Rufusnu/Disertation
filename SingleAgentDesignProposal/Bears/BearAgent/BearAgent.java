@@ -208,7 +208,14 @@ public class BearAgent extends Agent {
                 Settings.BEAR_MOVEMENT_DANGER_WEIGHT_WHEN_HUNGRY,
                 hunger
         );
-        return foodWeight * neighbor.food() - dangerWeight * neighbor.danger();
+        double crowdingWeight = weightedByHunger(
+            Settings.BEAR_MOVEMENT_CROWDING_WEIGHT_WHEN_FULL,
+            Settings.BEAR_MOVEMENT_CROWDING_WEIGHT_WHEN_HUNGRY,
+            hunger
+        );
+        return foodWeight * neighbor.food()
+            - dangerWeight * neighbor.danger()
+            - crowdingWeight * neighbor.nearbyBearCount();
     }
 
     private double hungerLevel() {
