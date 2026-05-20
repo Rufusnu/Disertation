@@ -11,9 +11,9 @@ import MASInterface.Agent.Action;
 import MASInterface.Agent.Agent;
 import MASInterface.Agent.Percept;
 import MASInterface.Settings;
+import Bears.Experiments.RngSupport;
 
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 
 /** The Vacuum Cleaning MASInterface.Agent - it is a simple reactive agent*/
 public class BearAgent extends Agent {
@@ -37,12 +37,12 @@ public class BearAgent extends Agent {
 
     public BearAgent(int id) {
         this(id,
-                ThreadLocalRandom.current().nextDouble(0, Settings.BEAR_MAX_GENERATE_AGE),
-                randomGender());
+                RngSupport.forAgent(id).nextDouble(0, Settings.BEAR_MAX_GENERATE_AGE),
+                randomGender(id));
     }
 
     public BearAgent (int id, int newAge) {
-        this(id, (double) newAge, randomGender());
+        this(id, (double) newAge, randomGender(id));
     }
 
     private BearAgent(int id, double initialAge, Gender gender) {
@@ -50,15 +50,15 @@ public class BearAgent extends Agent {
         this.age = initialAge;
         this.gender = gender;
         this.reproductionCooldownYearsRemaining = 0;
-        this.satiety = ThreadLocalRandom.current().nextDouble(Settings.BEAR_INITIAL_SATIETY_MIN, Settings.BEAR_INITIAL_SATIETY_MAX);
+        this.satiety = RngSupport.forAgent(id).nextDouble(Settings.BEAR_INITIAL_SATIETY_MIN, Settings.BEAR_INITIAL_SATIETY_MAX);
         this.gestationPeriod = 0;
         this.isPregnant = false;
         this.homeX = -1;
         this.homeY = -1;
     }
 
-    private static Gender randomGender() {
-        return ThreadLocalRandom.current().nextBoolean() ? Gender.FEMALE : Gender.MALE;
+    private static Gender randomGender(int id) {
+        return RngSupport.forAgent(id).nextBoolean() ? Gender.FEMALE : Gender.MALE;
     }
 
     public int getId() {
@@ -67,6 +67,21 @@ public class BearAgent extends Agent {
 
     public Gender getGender() {
         return gender;
+    }
+
+    /** Current satiety in [0, BEAR_SATIETY_MAX]; exposed for metrics collection. */
+    public double getSatiety() {
+        return satiety;
+    }
+
+    /** Current age in years; exposed for metrics collection. */
+    public double getAge() {
+        return age;
+    }
+
+    /** Whether this bear is currently pregnant; exposed for metrics collection. */
+    public boolean isPregnant() {
+        return isPregnant;
     }
 
     public void see(Percept percept) {
@@ -81,13 +96,13 @@ public class BearAgent extends Agent {
             return new Die(DeathCause.STARVATION);
         }
 
-        if (age >= Settings.BEAR_MAX_AGE && ThreadLocalRandom.current().nextDouble(0, 1) <= Settings.DEATH_RATE_AFTER_MAX_AGE)  {
+        if (age >= Settings.BEAR_MAX_AGE && RngSupport.forAgent(id).nextDouble(0, 1) <= Settings.DEATH_RATE_AFTER_MAX_AGE)  {
             return new Die(DeathCause.OLD_AGE);
         }
 
         // danger on the current tile kills probabilistically
         double danger = currentPercept.currentCell() != null ? currentPercept.currentCell().danger() : 0;
-        if (danger > 0 && ThreadLocalRandom.current().nextDouble() < danger * Settings.BEAR_DANGER_DEATH_RATE_PER_TICK * ageDangerMultiplier()) {
+        if (danger > 0 && RngSupport.forAgent(id).nextDouble() < danger * Settings.BEAR_DANGER_DEATH_RATE_PER_TICK * ageDangerMultiplier()) {
             return new Die(DeathCause.DANGER);
         }
 
@@ -258,7 +273,7 @@ public class BearAgent extends Agent {
                 Settings.BEAR_MOVEMENT_RANDOM_NOISE_WHEN_HUNGRY,
                 hunger
         );
-        return ThreadLocalRandom.current().nextDouble(-noiseMagnitude, noiseMagnitude);
+        return RngSupport.forAgent(id).nextDouble(-noiseMagnitude, noiseMagnitude);
     }
 
     private double hungerLevel() {

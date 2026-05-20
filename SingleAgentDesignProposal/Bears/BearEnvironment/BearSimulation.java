@@ -7,13 +7,13 @@ import MASInterface.Environment.Coords;
 import MASInterface.Environment.Simulation;
 import MASInterface.Environment.State;
 import Bears.BearAgent.BearAgent;
+import Bears.Experiments.RunMetricsRecorder;
 
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -23,9 +23,19 @@ public class BearSimulation extends Simulation {
 	private Map<Integer, BearAgent> agentsById;
 	private Map<DeathCause, Integer> deathCauseCounts;
 	private int lastAgentId;
+	private RunMetricsRecorder metricsRecorder;
 
 	public BearSimulation(BearEnvironment bearEnvironment) {
 		super(bearEnvironment);
+	}
+
+	/** Attaches a metrics recorder; sampled once per committed tick. */
+	public void setMetricsRecorder(RunMetricsRecorder recorder) {
+		this.metricsRecorder = recorder;
+	}
+
+	public Map<Integer, BearAgent> agentsById() {
+		return agentsById;
 	}
 
 	public void start(State initState) {
@@ -61,8 +71,10 @@ public class BearSimulation extends Simulation {
 			System.out.println("Bears started.");
 
 			long endTimeMillis = System.currentTimeMillis() + (Settings.SIMULATION_LENGTH * 1000L);
+			long maxTicks = Settings.SIMULATION_MAX_TICKS;
+			long tick = 0;
 			if (Settings.BENCHMARK) {
-				while (System.currentTimeMillis() < endTimeMillis) {
+				while (shouldContinue(endTimeMillis, maxTicks, tick)) {
 					List<BearAgent> tickAgents = snapshotAgents();
 					if (tickAgents.isEmpty()) {
 						System.out.println("Bears went extinct after " + benchmark.ticks + " ticks.");
@@ -78,9 +90,11 @@ public class BearSimulation extends Simulation {
 					BearSimulationBenchmark.CommitBreakdown commitBreakdown = commitActions(planResult.plannedActions);
 					benchmark.recordCommit(System.nanoTime() - commitStartNs, commitBreakdown);
 					benchmark.recordLoop(System.nanoTime() - loopStartNs);
+					tick++;
+					sampleMetricsForTick(tick);
 				}
 			} else {
-				while (System.currentTimeMillis() < endTimeMillis) {
+				while (shouldContinue(endTimeMillis, maxTicks, tick)) {
 					List<BearAgent> tickAgents = snapshotAgents();
 					if (tickAgents.isEmpty()) {
 						break;
@@ -88,6 +102,8 @@ public class BearSimulation extends Simulation {
 
 					Map<Integer, Action> plannedActions = planActionsNoBenchmark(tickAgents, executor);
 					commitActionsNoBenchmark(plannedActions);
+					tick++;
+					sampleMetricsForTick(tick);
 				}
 			}
 
@@ -123,6 +139,20 @@ public class BearSimulation extends Simulation {
 		return new ArrayList<BearAgent>(agentsById.values());
 	}
 
+	private boolean shouldContinue(long endTimeMillis, long maxTicks, long currentTick) {
+		if (maxTicks > 0) {
+			return currentTick < maxTicks;
+		}
+		return System.currentTimeMillis() < endTimeMillis;
+	}
+
+	private void sampleMetricsForTick(long tick) {
+		if (metricsRecorder == null) {
+			return;
+		}
+		metricsRecorder.sampleTick(tick, agentsById.values());
+	}
+
 	private Map<Integer, Action> planActionsNoBenchmark(List<BearAgent> agentList, ExecutorService executor) throws Exception {
 		List<Callable<Map.Entry<Integer, Action>>> tasks = new ArrayList<Callable<Map.Entry<Integer, Action>>>();
 
@@ -134,7 +164,7 @@ public class BearSimulation extends Simulation {
 			});
 		}
 
-		Map<Integer, Action> plannedActions = new HashMap<Integer, Action>();
+		Map<Integer, Action> plannedActions = new java.util.TreeMap<Integer, Action>();
 		List<Future<Map.Entry<Integer, Action>>> futures = executor.invokeAll(tasks);
 		for (Future<Map.Entry<Integer, Action>> future : futures) {
 			Map.Entry<Integer, Action> plannedAction = future.get();
@@ -168,7 +198,7 @@ public class BearSimulation extends Simulation {
 		breakdown.taskBuildNs = System.nanoTime() - taskBuildStartNs;
 
 		// use the deferred unit of work in order to retrieve the planned action for each agent in parallel
-		Map<Integer, Action> plannedActions = new HashMap<Integer, Action>();
+		Map<Integer, Action> plannedActions = new java.util.TreeMap<Integer, Action>();
 		long invokeAllStartNs = System.nanoTime();
 		List<Future<Map.Entry<Integer, Action>>> futures = executor.invokeAll(tasks); // run the deferred units of work
 		breakdown.invokeAllNs = System.nanoTime() - invokeAllStartNs;
@@ -279,7 +309,7 @@ public class BearSimulation extends Simulation {
 	}
 
     private void restoreRandomFood() {
-		int randomNumberOfFoodRestored = ThreadLocalRandom.current().nextInt(Settings.MAP_LENGTH * 2 + 1);
+		int randomNumberOfFoodRestored = Bears.Experiments.RngSupport.environment().nextInt(Settings.MAP_LENGTH * 2 + 1);
 
         while (randomNumberOfFoodRestored-- > 0) {
             ((BearEnvironment) this.environment).restoreRandomFood();
@@ -301,6 +331,9 @@ public class BearSimulation extends Simulation {
                 System.out.println(childAgent + " created.");
             }
 			agentsById.put(childAgent.getId(), childAgent);
+			if (metricsRecorder != null) {
+				metricsRecorder.noteBirth();
+			}
         }
     }
 
@@ -312,6 +345,9 @@ public class BearSimulation extends Simulation {
             ((BearEnvironment) this.environment).removeAgent(agentId); // remove agent from simulation
 			BearAgent removedAgent = agentsById.remove(agentId);
 			deathCauseCounts.merge(deathCause, 1, Integer::sum);
+			if (metricsRecorder != null) {
+				metricsRecorder.noteDeath(deathCause);
+			}
             if (Settings.VERBOSE) {
 				System.out.println((removedAgent != null ? removedAgent : ("Robot#" + agentId)) + " removed. Cause: " + deathCause);
             }

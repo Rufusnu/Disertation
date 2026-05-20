@@ -4,13 +4,13 @@ import Bears.BearAgent.BearAgent;
 import MASInterface.Environment.State;
 import MASInterface.Environment.Coords;
 import MASInterface.Settings;
+import Bears.Experiments.RngSupport;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 
 /** Represents a state in the vacuum world. */
 public class BearState extends State {
@@ -97,8 +97,8 @@ public class BearState extends State {
 
     private Coords getRandomTile() {
         int upperbound = mapLength() - 2; // 0->(nIndex-2)
-		int random_numberX = 1 + ThreadLocalRandom.current().nextInt(upperbound); // 1->(nIndex-1)
-		int random_numberY = 1 + ThreadLocalRandom.current().nextInt(upperbound); // 1->(nIndex-1)
+		int random_numberX = 1 + RngSupport.environment().nextInt(upperbound); // 1->(nIndex-1)
+		int random_numberY = 1 + RngSupport.environment().nextInt(upperbound); // 1->(nIndex-1)
 
         return new Coords(random_numberX, random_numberY);
     }

@@ -5,7 +5,9 @@ public final class Settings {
     public static int TEST_EXECUTIONS_PER_AGENT_NUMBER = 50;
     public static int MAP_LENGTH = 100;
     public static int THREAD_COUNT = 16;
-    public static int SIMULATION_LENGTH = 100; // in seconds
+    public static int SIMULATION_LENGTH = 100; // in seconds (wall-clock budget when SIMULATION_MAX_TICKS <= 0)
+    /** If > 0, simulation runs for exactly this many ticks regardless of wall time. Used by the experiment pipeline. */
+    public static long SIMULATION_MAX_TICKS = 0;
     public static double ONE_TICK_IN_YEARS = 0.0001140771; // currently == 1 hour
 
     public static boolean VERBOSE = false;

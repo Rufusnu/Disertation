@@ -2,8 +2,7 @@ package Bears.BearEnvironment;
 
 import MASInterface.Environment.Cell;
 import MASInterface.Settings;
-
-import java.util.concurrent.ThreadLocalRandom;
+import Bears.Experiments.RngSupport;
 
 public enum BearCellType implements Cell.CellType {
     NONE(-1, -1, '~'),
@@ -24,7 +23,7 @@ public enum BearCellType implements Cell.CellType {
     }
 
     public static BearCellType randomTerrainType() {
-        double randomNumber = ThreadLocalRandom.current().nextDouble();
+        double randomNumber = RngSupport.environment().nextDouble();
 
         if (randomNumber < Settings.FOREST_PERCENTAGE) return FOREST;
         if (randomNumber < Settings.FOREST_PERCENTAGE + Settings.FIELD_PERCENTAGE) return FIELD;
@@ -37,14 +36,14 @@ public enum BearCellType implements Cell.CellType {
         if (this == NONE) {
             return -1;
         }
-        return averageFood + ThreadLocalRandom.current().nextDouble(-Settings.FOOD_MAX_VARIANCE, Settings.FOOD_MAX_VARIANCE);
+        return averageFood + RngSupport.environment().nextDouble(-Settings.FOOD_MAX_VARIANCE, Settings.FOOD_MAX_VARIANCE);
     }
 
     public double randomDangerValue() {
         if (this == NONE) {
             return -1;
         }
-        return averageDanger + ThreadLocalRandom.current().nextDouble(-Settings.DANGER_MAX_VARIANCE, Settings.DANGER_MAX_VARIANCE);
+        return averageDanger + RngSupport.environment().nextDouble(-Settings.DANGER_MAX_VARIANCE, Settings.DANGER_MAX_VARIANCE);
     }
 
     public boolean hasEnoughFood(double value) {

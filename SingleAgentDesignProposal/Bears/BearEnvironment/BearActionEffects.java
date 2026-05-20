@@ -4,18 +4,18 @@ import MASInterface.Agent.StepActionContext;
 import MASInterface.Environment.Coords;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 /** Collects all action intents for a single simulation tick. */
 public class BearActionEffects implements StepActionContext {
-    private final Map<Integer, Coords> moveIntents = new HashMap<Integer, Coords>();
-    private final Set<Integer> birthIntents = new HashSet<>();
-    private final Set<Coords> eatIntents = new HashSet<>();
-    private final Map<Integer, DeathCause> dieIntents = new HashMap<Integer, DeathCause>();
+    private final Map<Integer, Coords> moveIntents = new LinkedHashMap<Integer, Coords>();
+    private final Set<Integer> birthIntents = new LinkedHashSet<>();
+    private final Set<Coords> eatIntents = new LinkedHashSet<>();
+    private final Map<Integer, DeathCause> dieIntents = new LinkedHashMap<Integer, DeathCause>();
     private int performedActions = 0;
 
     public void requestMove(int agentId, Coords target) {
@@ -36,7 +36,7 @@ public class BearActionEffects implements StepActionContext {
     }
 
     public Map<Coords, List<Integer>> moveClaimsByTarget() {
-        Map<Coords, List<Integer>> claimantsByTarget = new HashMap<Coords, List<Integer>>();
+        Map<Coords, List<Integer>> claimantsByTarget = new LinkedHashMap<Coords, List<Integer>>();
         for (Map.Entry<Integer, Coords> moveIntent : moveIntents.entrySet()) {
             claimantsByTarget.computeIfAbsent(moveIntent.getValue(), ignored -> new ArrayList<Integer>()).add(moveIntent.getKey());
         }
