@@ -1,0 +1,4 @@
+scenarioId,runId,replicateIndex,seed,maxTicks,initialBearCount,mapLength,parameterOverrides,scheduleSource,scheduleEntries
+baseline,baseline-r0,0,-4767286540954276203,175321,500,100,,E:\Github\Disertation\SingleAgentDesignProposal\Bears\Experiments\Schedules\schedule.csv,5
+baseline,baseline-r1,1,2949826092126892291,175321,500,100,,E:\Github\Disertation\SingleAgentDesignProposal\Bears\Experiments\Schedules\schedule.csv,5
+baseline,baseline-r2,2,5139283748462763858,175321,500,100,,E:\Github\Disertation\SingleAgentDesignProposal\Bears\Experiments\Schedules\schedule.csv,5

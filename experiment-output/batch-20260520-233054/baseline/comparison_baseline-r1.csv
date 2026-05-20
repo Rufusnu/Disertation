@@ -1,0 +1,5 @@
+year,simulatedPopulation,referencePopulation,absoluteError
+0,547.00,500.00,47.00
+1,571.00,530.00,41.00
+2,1.00,560.00,559.00
+3,0.00,590.00,590.00

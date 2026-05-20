@@ -68,7 +68,8 @@ public final class BatchRunner {
 
         List<String> metadataHeader = Arrays.asList(
                 "scenarioId", "runId", "replicateIndex", "seed", "maxTicks",
-                "initialBearCount", "mapLength", "parameterOverrides"
+                "initialBearCount", "mapLength", "parameterOverrides",
+                "scheduleSource", "scheduleEntries"
         );
         List<String> summaryHeader = Arrays.asList(
                 "scenarioId", "runId", "replicateIndex", "seed",
@@ -106,7 +107,9 @@ public final class BatchRunner {
                             String.valueOf(runConfig.maxTicks()),
                             String.valueOf(scenario.initialBearCount()),
                             String.valueOf(scenario.mapLength()),
-                            formatOverrides(runConfig.parameterOverrides())
+                            formatOverrides(runConfig.parameterOverrides()),
+                            scenario.parameterSchedule().sourceDescription(),
+                            String.valueOf(scenario.parameterSchedule().entries().size())
                     ));
 
                     List<TickMetrics> samples = result.recorder.samples();
@@ -160,8 +163,23 @@ public final class BatchRunner {
         RunMetricsRecorder recorder = new RunMetricsRecorder(runConfig);
         simulation.setMetricsRecorder(recorder);
 
+        ScheduleApplier scheduleApplier = new ScheduleApplier(scenario.parameterSchedule());
+        simulation.setScheduleApplier(scheduleApplier);
+
         BearState initState = BearState.getInitState(scenario.mapLength());
-        simulation.startNoPrompt(initState);
+        try {
+            simulation.startNoPrompt(initState);
+        } finally {
+            // Always restore Settings touched by the schedule, even on failure.
+            scheduleApplier.restore();
+        }
+
+        // Per-run audit of which schedule events fired and when.
+        if (!scheduleApplier.isEmpty()) {
+            Path scheduleCsv = batchDir.resolve(scenario.scenarioId())
+                    .resolve("schedule_" + runConfig.runId() + ".csv");
+            writeScheduleAuditCsv(scheduleCsv, scheduleApplier.appliedEvents());
+        }
 
         // Per-tick CSV.
         Path runCsv = batchDir.resolve(scenario.scenarioId())
@@ -209,6 +227,21 @@ public final class BatchRunner {
                     String.format(Locale.ROOT, "%.4f", sample.meanSatiety),
                     String.format(Locale.ROOT, "%.4f", sample.meanAge),
                     String.valueOf(sample.pregnantFemales)
+            ));
+        }
+        CsvWriter.writeRows(path, header, rows);
+    }
+
+    private static void writeScheduleAuditCsv(Path path, List<ScheduleApplier.AppliedEvent> events) throws IOException {
+        List<String> header = Arrays.asList("tick", "simulationYear", "parameter", "oldValue", "newValue");
+        List<List<String>> rows = new ArrayList<>(events.size());
+        for (ScheduleApplier.AppliedEvent ev : events) {
+            rows.add(Arrays.asList(
+                    String.valueOf(ev.tick),
+                    String.format(Locale.ROOT, "%.4f", ev.simulationYear),
+                    ev.parameter,
+                    ev.oldValue,
+                    ev.newValue
             ));
         }
         CsvWriter.writeRows(path, header, rows);
@@ -311,7 +344,7 @@ public final class BatchRunner {
         Path outputDir = Paths.get(args.length > 0 ? args[0] : "experiment-output");
 
         // Smoke-test scenario.
-        long maxTicks = (long) Math.ceil(5.0 / Settings.ONE_TICK_IN_YEARS); // 5 simulated years
+        long maxTicks = (long) Math.ceil(20.0 / Settings.ONE_TICK_IN_YEARS); // 5 simulated years
 
         // Reference data: load from CSV if -Dreference=<path> is provided,
         // otherwise fall back to a synthetic stub so the smoke test still
@@ -331,6 +364,17 @@ public final class BatchRunner {
             System.out.println("No -Dreference=<path> given; using synthetic reference for smoke test.");
         }
 
+        // Optional time-varying parameter schedule. Use -Dschedule=<path>
+        // pointing at a CSV (year,parameter,value) or JSON file. Stationary
+        // by default.
+        ParameterSchedule schedule = ParameterSchedule.empty();
+        String schedulePath = new String("E:\\Github\\Disertation\\SingleAgentDesignProposal\\Bears\\Experiments\\Schedules\\schedule.csv");   // System.getProperty("schedule");
+        if (schedulePath != null && !schedulePath.isBlank()) {
+            schedule = ParameterSchedule.load(Paths.get(schedulePath));
+            System.out.println("Loaded parameter schedule with " + schedule.entries().size()
+                    + " entries from " + schedulePath);
+        }
+
         Scenario baseline = new Scenario(
                 "baseline",
                 3,           // replicates
@@ -339,7 +383,8 @@ public final class BatchRunner {
                 500,         // initial bears
                 100,         // map length
                 new LinkedHashMap<>(), // no overrides
-                reference
+                reference,
+                schedule
         );
 
         runScenarios(java.util.Collections.singletonList(baseline), outputDir);

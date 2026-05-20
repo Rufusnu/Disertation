@@ -1,0 +1,7 @@
+[
+  {"year": 0,  "parameter": "BEAR_DANGER_DEATH_RATE_PER_TICK", "value": "0.000020"},
+  {"year": 0,  "parameter": "FOOD_GROWN_PER_TICK",             "value": "0.005"},
+  {"year": 25, "parameter": "BEAR_DANGER_DEATH_RATE_PER_TICK", "value": "0.000010"},
+  {"year": 25, "parameter": "FOOD_GROWN_PER_TICK",             "value": "0.0065"},
+  {"year": 40, "parameter": "BEAR_DANGER_CHILD_MULTIPLIER",    "value": "2.5"}
+]

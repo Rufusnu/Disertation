@@ -8,6 +8,7 @@ import MASInterface.Environment.Simulation;
 import MASInterface.Environment.State;
 import Bears.BearAgent.BearAgent;
 import Bears.Experiments.RunMetricsRecorder;
+import Bears.Experiments.ScheduleApplier;
 
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -24,6 +25,7 @@ public class BearSimulation extends Simulation {
 	private Map<DeathCause, Integer> deathCauseCounts;
 	private int lastAgentId;
 	private RunMetricsRecorder metricsRecorder;
+	private ScheduleApplier scheduleApplier;
 
 	public BearSimulation(BearEnvironment bearEnvironment) {
 		super(bearEnvironment);
@@ -32,6 +34,15 @@ public class BearSimulation extends Simulation {
 	/** Attaches a metrics recorder; sampled once per committed tick. */
 	public void setMetricsRecorder(RunMetricsRecorder recorder) {
 		this.metricsRecorder = recorder;
+	}
+
+	/**
+	 * Attaches a {@link ScheduleApplier} that mutates {@link Settings} as the
+	 * simulation crosses scheduled simulation years. Pass {@code null} (or an
+	 * empty schedule) to disable.
+	 */
+	public void setScheduleApplier(ScheduleApplier scheduleApplier) {
+		this.scheduleApplier = scheduleApplier;
 	}
 
 	public Map<Integer, BearAgent> agentsById() {
@@ -87,6 +98,8 @@ public class BearSimulation extends Simulation {
 						break;
 					}
 
+					applyScheduleForTick(tick);
+
 					long loopStartNs = System.nanoTime();
 					long planStartNs = System.nanoTime();
 					BearSimulationBenchmark.PlanResult planResult = planActions(tickAgents, executor);
@@ -105,6 +118,8 @@ public class BearSimulation extends Simulation {
 					if (tickAgents.isEmpty()) {
 						break;
 					}
+
+					applyScheduleForTick(tick);
 
 					Map<Integer, Action> plannedActions = planActionsNoBenchmark(tickAgents, executor);
 					commitActionsNoBenchmark(plannedActions);
@@ -157,6 +172,21 @@ public class BearSimulation extends Simulation {
 			return;
 		}
 		metricsRecorder.sampleTick(tick, agentsById.values());
+	}
+
+	/**
+	 * Applies any time-varying parameter changes whose simulation-year is
+	 * &le; the year about to be simulated by tick {@code tick+1}. Called at
+	 * the top of each tick loop iteration before planning, so the new values
+	 * are visible during the upcoming tick. Year=0 entries therefore apply
+	 * before tick 1 runs.
+	 */
+	private void applyScheduleForTick(long tick) {
+		if (scheduleApplier == null || scheduleApplier.isEmpty()) {
+			return;
+		}
+		double simulationYear = tick * Settings.ONE_TICK_IN_YEARS;
+		scheduleApplier.applyDue(simulationYear, tick);
 	}
 
 	private Map<Integer, Action> planActionsNoBenchmark(List<BearAgent> agentList, ExecutorService executor) throws Exception {

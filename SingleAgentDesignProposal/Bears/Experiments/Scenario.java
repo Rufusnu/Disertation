@@ -22,6 +22,8 @@ public final class Scenario {
     private final Map<String, String> parameterOverrides;
     /** year -> reference population (e.g. census estimate). May be empty. */
     private final NavigableMap<Integer, Double> referencePopulationByYear;
+    /** Optional time-varying parameter schedule. May be empty (= stationary). */
+    private final ParameterSchedule parameterSchedule;
 
     public Scenario(
             String scenarioId,
@@ -32,6 +34,21 @@ public final class Scenario {
             int mapLength,
             Map<String, String> parameterOverrides,
             NavigableMap<Integer, Double> referencePopulationByYear
+    ) {
+        this(scenarioId, replicates, baseSeed, maxTicks, initialBearCount, mapLength,
+                parameterOverrides, referencePopulationByYear, ParameterSchedule.empty());
+    }
+
+    public Scenario(
+            String scenarioId,
+            int replicates,
+            long baseSeed,
+            long maxTicks,
+            int initialBearCount,
+            int mapLength,
+            Map<String, String> parameterOverrides,
+            NavigableMap<Integer, Double> referencePopulationByYear,
+            ParameterSchedule parameterSchedule
     ) {
         this.scenarioId = scenarioId;
         this.replicates = replicates;
@@ -45,6 +62,9 @@ public final class Scenario {
         this.referencePopulationByYear = referencePopulationByYear != null
                 ? new TreeMap<>(referencePopulationByYear)
                 : new TreeMap<>();
+        this.parameterSchedule = parameterSchedule != null
+                ? parameterSchedule
+                : ParameterSchedule.empty();
     }
 
     public String scenarioId() { return scenarioId; }
@@ -55,4 +75,5 @@ public final class Scenario {
     public int mapLength() { return mapLength; }
     public Map<String, String> parameterOverrides() { return parameterOverrides; }
     public NavigableMap<Integer, Double> referencePopulationByYear() { return referencePopulationByYear; }
+    public ParameterSchedule parameterSchedule() { return parameterSchedule; }
 }
