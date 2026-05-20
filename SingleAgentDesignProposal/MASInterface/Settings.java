@@ -49,13 +49,24 @@ public final class Settings {
      *  (with a random remaining gestation in [0, BEAR_GESTATION_PERIOD_YEARS)) so the first
      *  birth wave is spread out instead of synchronised. */
     public static double BEAR_INITIAL_PREGNANT_FRACTION = 0.25;
-    public static double BEAR_INITIAL_SATIETY_MIN = 0.55;
-    public static double BEAR_INITIAL_SATIETY_MAX = 0.95;
+    // Satiety in [0, 1] is an abstract "energy reserve" of a bear. With 1 tick ~= 1 hour
+    // (8766 ticks / year) the calibration below targets ecologically plausible behaviour:
+    //   - a bear that finds no food at all loses condition over ~40-60 days (active season,
+    //     not hibernation), which matches reported fasting tolerance for brown bears outside
+    //     the den. 0.00075 / tick * 24 ~= 0.018 / day -> ~55 days from full to empty.
+    //   - one eat event is an incremental meal, not a full top-off; on a forest tile
+    //     (avg food 0.6) it returns ~0.036 satiety, i.e. ~2 days of metabolism, so bears
+    //     have to forage repeatedly instead of saturating in one bite.
+    //   - the eat preference threshold and initial range are pulled down so that bears do
+    //     not start (and do not stabilise) near the satiety ceiling, making starvation a
+    //     real cause of death when food is scarce or competition is high.
+    public static double BEAR_INITIAL_SATIETY_MIN = 0.35;
+    public static double BEAR_INITIAL_SATIETY_MAX = 0.75;
     public static double BEAR_SATIETY_MAX = 1.0;
-    public static double BEAR_SATIETY_DECAY_PER_TICK = 0.0003;
-    public static double BEAR_SATIETY_DECAY_PER_TICK_PREGNANT_DEBUFF = 1.3;
-    public static double BEAR_SATIETY_GAIN_PER_EAT = 0.18;
-    public static double BEAR_SATIETY_EAT_PREFERENCE_THRESHOLD = 0.75; // bear prefers to eat instead of moving when satiety is above this
+    public static double BEAR_SATIETY_DECAY_PER_TICK = 0.00075;
+    public static double BEAR_SATIETY_DECAY_PER_TICK_PREGNANT_DEBUFF = 1.4;
+    public static double BEAR_SATIETY_GAIN_PER_EAT = 0.06;
+    public static double BEAR_SATIETY_EAT_PREFERENCE_THRESHOLD = 0.55; // bear prefers to eat instead of moving when satiety is below this
     public static double BEAR_MIN_SATIETY_TO_REPRODUCE = 0.6;
     public static double BEAR_MOVEMENT_FOOD_WEIGHT_WHEN_FULL = 0.25;
     public static double BEAR_MOVEMENT_FOOD_WEIGHT_WHEN_HUNGRY = 2.0;
