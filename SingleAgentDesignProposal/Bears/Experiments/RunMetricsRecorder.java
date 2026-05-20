@@ -44,10 +44,21 @@ public final class RunMetricsRecorder {
     /**
      * Records a tick sample if this tick lies on the configured sample stride.
      * Always called once per tick by {@code BearSimulation}; the stride filter
-     * is applied here.
+     * is applied here. Pass {@code tick == 0} (with {@code force=true} via
+     * {@link #sampleInitialState}) to record the founding cohort before any
+     * tick has run.
      */
     public void sampleTick(long tick, Collection<BearAgent> agents) {
-        if ((tick % runConfig.metricsSampleEveryTicks()) != 0) {
+        sampleTickInternal(tick, agents, false);
+    }
+
+    /** Records the initial (pre-tick-1) state regardless of sample stride. */
+    public void sampleInitialState(Collection<BearAgent> agents) {
+        sampleTickInternal(0L, agents, true);
+    }
+
+    private void sampleTickInternal(long tick, Collection<BearAgent> agents, boolean force) {
+        if (!force && (tick % runConfig.metricsSampleEveryTicks()) != 0) {
             return;
         }
 
@@ -56,11 +67,18 @@ public final class RunMetricsRecorder {
         double satietySum = 0;
         double ageSum = 0;
         int pregnant = 0;
+        int females = 0;
+        int males = 0;
         for (BearAgent agent : agents) {
             satietySum += agent.getSatiety();
             ageSum += agent.getAge();
             if (agent.isPregnant()) {
                 pregnant++;
+            }
+            if (agent.getGender() == BearAgent.Gender.FEMALE) {
+                females++;
+            } else {
+                males++;
             }
         }
         double meanSatiety = population > 0 ? satietySum / population : 0.0;
@@ -72,6 +90,8 @@ public final class RunMetricsRecorder {
                 tick,
                 simulationYear,
                 population,
+                females,
+                males,
                 birthsSinceLastSample,
                 deathsSnapshot,
                 meanSatiety,

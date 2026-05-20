@@ -66,6 +66,12 @@ public class BearSimulation extends Simulation {
 
 		System.out.println("Bears created.");
 
+		// Record the founding cohort BEFORE any tick runs so the CSV exposes
+		// the initial gender split, founding-pregnancy count, etc.
+		if (metricsRecorder != null) {
+			metricsRecorder.sampleInitialState(agentsById.values());
+		}
+
 		System.out.println("Starting Bears...");
 		try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) { // try (ExecutorService executor = Executors.newFixedThreadPool(Math.min(THREAD_COUNT, agentList.size()))) {
 			System.out.println("Bears started.");

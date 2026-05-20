@@ -17,6 +17,8 @@ public final class TickMetrics {
     public final long tick;
     public final double simulationYear;
     public final int population;
+    public final int females;
+    public final int males;
     public final int births;
     public final Map<DeathCause, Integer> deathsByCause;
     public final int deathsTotal;
@@ -28,6 +30,8 @@ public final class TickMetrics {
             long tick,
             double simulationYear,
             int population,
+            int females,
+            int males,
             int births,
             Map<DeathCause, Integer> deathsByCause,
             double meanSatiety,
@@ -37,6 +41,8 @@ public final class TickMetrics {
         this.tick = tick;
         this.simulationYear = simulationYear;
         this.population = population;
+        this.females = females;
+        this.males = males;
         this.births = births;
         this.deathsByCause = new EnumMap<>(DeathCause.class);
         if (deathsByCause != null) {

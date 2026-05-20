@@ -49,12 +49,39 @@ public class BearAgent extends Agent {
         this.id = id;
         this.age = initialAge;
         this.gender = gender;
-        this.reproductionCooldownYearsRemaining = 0;
         this.satiety = RngSupport.forAgent(id).nextDouble(Settings.BEAR_INITIAL_SATIETY_MIN, Settings.BEAR_INITIAL_SATIETY_MAX);
-        this.gestationPeriod = 0;
-        this.isPregnant = false;
         this.homeX = -1;
         this.homeY = -1;
+
+        // Decide the founding reproductive state for females already of
+        // reproductive age at spawn time. Three mutually exclusive states are
+        // possible:
+        //   1. PREGNANT  - chosen with probability BEAR_INITIAL_PREGNANT_FRACTION;
+        //                  remaining gestation is uniform in
+        //                  [0, BEAR_GESTATION_PERIOD_YEARS).
+        //   2. ON COOLDOWN - chosen otherwise; cooldown uniform in
+        //                  [0, BEAR_REPRODUCTION_COOLDOWN_YEARS).
+        //   3. AVAILABLE - newborns (initialAge == 0) and males.
+        // Without this staggering the entire founding female cohort would
+        // come off cooldown / out of gestation simultaneously and produce
+        // synchronised birth waves.
+        boolean reproductiveFemale =
+                gender == Gender.FEMALE && initialAge >= Settings.BEAR_MIN_REPRODUCTION_AGE;
+        if (reproductiveFemale
+                && RngSupport.forAgent(id).nextDouble() < Settings.BEAR_INITIAL_PREGNANT_FRACTION) {
+            this.isPregnant = true;
+            this.gestationPeriod = RngSupport.forAgent(id).nextDouble(0, Settings.BEAR_GESTATION_PERIOD_YEARS);
+            this.reproductionCooldownYearsRemaining = 0;
+        } else if (reproductiveFemale) {
+            this.isPregnant = false;
+            this.gestationPeriod = 0;
+            this.reproductionCooldownYearsRemaining =
+                    RngSupport.forAgent(id).nextDouble(0, Settings.BEAR_REPRODUCTION_COOLDOWN_YEARS);
+        } else {
+            this.isPregnant = false;
+            this.gestationPeriod = 0;
+            this.reproductionCooldownYearsRemaining = 0;
+        }
     }
 
     private static Gender randomGender(int id) {

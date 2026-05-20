@@ -1,0 +1,4 @@
+scenarioId,runId,replicateIndex,seed,maxTicks,initialBearCount,mapLength,parameterOverrides
+baseline,baseline-r0,0,-4767286540954276203,43831,500,100,
+baseline,baseline-r1,1,2949826092126892291,43831,500,100,
+baseline,baseline-r2,2,5139283748462763858,43831,500,100,

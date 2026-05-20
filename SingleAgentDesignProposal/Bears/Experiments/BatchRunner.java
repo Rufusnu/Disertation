@@ -189,7 +189,7 @@ public final class BatchRunner {
 
     private static void writePerTickCsv(Path path, List<TickMetrics> samples) throws IOException {
         List<String> header = Arrays.asList(
-                "tick", "year", "population", "births",
+                "tick", "year", "population", "females", "males", "births",
                 "deathsOldAge", "deathsStarvation", "deathsDanger", "deathsTotal",
                 "meanSatiety", "meanAge", "pregnantFemales"
         );
@@ -199,6 +199,8 @@ public final class BatchRunner {
                     String.valueOf(sample.tick),
                     String.format(Locale.ROOT, "%.4f", sample.simulationYear),
                     String.valueOf(sample.population),
+                    String.valueOf(sample.females),
+                    String.valueOf(sample.males),
                     String.valueOf(sample.births),
                     String.valueOf(sample.deathsByCause.getOrDefault(DeathCause.OLD_AGE, 0)),
                     String.valueOf(sample.deathsByCause.getOrDefault(DeathCause.STARVATION, 0)),

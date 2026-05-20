@@ -45,6 +45,10 @@ public final class Settings {
     public static double BEAR_MIN_REPRODUCTION_AGE = 4;
     public static double BEAR_REPRODUCTION_COOLDOWN_YEARS = 3;
     public static double BEAR_GESTATION_PERIOD_YEARS = 1;
+    /** Fraction of founding reproductive females that start the simulation already pregnant
+     *  (with a random remaining gestation in [0, BEAR_GESTATION_PERIOD_YEARS)) so the first
+     *  birth wave is spread out instead of synchronised. */
+    public static double BEAR_INITIAL_PREGNANT_FRACTION = 0.25;
     public static double BEAR_INITIAL_SATIETY_MIN = 0.55;
     public static double BEAR_INITIAL_SATIETY_MAX = 0.95;
     public static double BEAR_SATIETY_MAX = 1.0;

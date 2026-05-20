@@ -1,0 +1,4 @@
+scenarioId,runId,replicateIndex,seed,finalPopulation,totalBirths,deathsOldAge,deathsStarvation,deathsDanger,meanSatietyFinal,comparedYears,mae,rmse
+baseline,baseline-r0,0,-4767286540954276203,712,242,0,0,30,0.9908,6,60.1667,73.4631
+baseline,baseline-r1,1,2949826092126892291,709,252,0,0,43,0.9912,6,57.0000,67.9853
+baseline,baseline-r2,2,5139283748462763858,737,263,0,0,26,0.9905,6,71.1667,88.3393
