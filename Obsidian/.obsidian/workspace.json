@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Disertatie/Transylvania bear population case study plan.md",
+                "file": "Disertatie/Agent based bear simulation multithreaded and distributed.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Transylvania bear population case study plan"
+              "title": "Agent based bear simulation multithreaded and distributed"
             }
           }
         ]
@@ -185,9 +185,9 @@
   },
   "active": "ea259d50ac6b625f",
   "lastOpenFiles": [
+    "Disertatie/Bear simulation parameter tuning.md",
     "Disertatie/Thesis title abstract and core references.md",
     "Disertatie/Agent based bear simulation multithreaded and distributed.md",
-    "Disertatie/Transylvania bear population case study plan.md",
-    "Disertatie/Bear simulation parameter tuning.md"
+    "Disertatie/Transylvania bear population case study plan.md"
   ]
 }

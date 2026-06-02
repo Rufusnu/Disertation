@@ -77,3 +77,11 @@ More natural options:
 - **Add exploration behavior**: sometimes move randomly or continue in a loose direction instead of constantly optimizing.
 - **Make food depletion matter locally**: if many bears gather, food should drop quickly, pushing them away naturally.
 - **Add home ranges / territories**: bears prefer staying within a personal region and avoid other adult bears.
+
+
+Discutie: 
+- daca si alte animale mananca. cum influenteaza ele simularea?
+- interfata mai usor de folosita pentru utilizator
+- simulate mai multe animale?
+- sa pot modifca cata padure este
+	- interfata grafica sa poata modifica celulele
