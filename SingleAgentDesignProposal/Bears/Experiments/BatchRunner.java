@@ -75,6 +75,7 @@ public final class BatchRunner {
                 "scenarioId", "runId", "replicateIndex", "seed",
                 "finalPopulation", "totalBirths",
                 "deathsOldAge", "deathsStarvation", "deathsDanger",
+                "totalConflictEvents",
                 "meanSatietyFinal", "comparedYears", "mae", "rmse"
         );
 
@@ -116,10 +117,12 @@ public final class BatchRunner {
                     int finalPop = samples.isEmpty() ? 0 : samples.get(samples.size() - 1).population;
                     double finalSatiety = samples.isEmpty() ? 0.0 : samples.get(samples.size() - 1).meanSatiety;
                     int totalBirths = 0;
+                    int totalConflictEvents = 0;
                     Map<DeathCause, Integer> deathTotals = new LinkedHashMap<>();
                     for (DeathCause cause : DeathCause.values()) deathTotals.put(cause, 0);
                     for (TickMetrics sample : samples) {
                         totalBirths += sample.births;
+                        totalConflictEvents += sample.conflictEvents;
                         for (Map.Entry<DeathCause, Integer> e : sample.deathsByCause.entrySet()) {
                             deathTotals.merge(e.getKey(), e.getValue(), Integer::sum);
                         }
@@ -135,6 +138,7 @@ public final class BatchRunner {
                             String.valueOf(deathTotals.getOrDefault(DeathCause.OLD_AGE, 0)),
                             String.valueOf(deathTotals.getOrDefault(DeathCause.STARVATION, 0)),
                             String.valueOf(deathTotals.getOrDefault(DeathCause.DANGER, 0)),
+                            String.valueOf(totalConflictEvents),
                             String.format(Locale.ROOT, "%.4f", finalSatiety),
                             String.valueOf(result.evaluation.sampleCount),
                             formatDouble(result.evaluation.mae),
@@ -209,6 +213,7 @@ public final class BatchRunner {
         List<String> header = Arrays.asList(
                 "tick", "year", "population", "females", "males", "births",
                 "deathsOldAge", "deathsStarvation", "deathsDanger", "deathsTotal",
+                "conflictEvents",
                 "meanSatiety", "meanAge", "pregnantFemales"
         );
         List<List<String>> rows = new ArrayList<>(samples.size());
@@ -224,6 +229,7 @@ public final class BatchRunner {
                     String.valueOf(sample.deathsByCause.getOrDefault(DeathCause.STARVATION, 0)),
                     String.valueOf(sample.deathsByCause.getOrDefault(DeathCause.DANGER, 0)),
                     String.valueOf(sample.deathsTotal),
+                    String.valueOf(sample.conflictEvents),
                     String.format(Locale.ROOT, "%.4f", sample.meanSatiety),
                     String.format(Locale.ROOT, "%.4f", sample.meanAge),
                     String.valueOf(sample.pregnantFemales)

@@ -22,6 +22,7 @@ public final class TickMetrics {
     public final int births;
     public final Map<DeathCause, Integer> deathsByCause;
     public final int deathsTotal;
+    public final int conflictEvents;
     public final double meanSatiety;
     public final int pregnantFemales;
     public final double meanAge;
@@ -34,6 +35,7 @@ public final class TickMetrics {
             int males,
             int births,
             Map<DeathCause, Integer> deathsByCause,
+            int conflictEvents,
             double meanSatiety,
             int pregnantFemales,
             double meanAge
@@ -53,6 +55,7 @@ public final class TickMetrics {
             total += v;
         }
         this.deathsTotal = total;
+        this.conflictEvents = conflictEvents;
         this.meanSatiety = meanSatiety;
         this.pregnantFemales = pregnantFemales;
         this.meanAge = meanAge;

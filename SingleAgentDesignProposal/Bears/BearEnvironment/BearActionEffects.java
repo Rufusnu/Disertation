@@ -17,6 +17,7 @@ public class BearActionEffects implements StepActionContext {
     private final Set<Coords> eatIntents = new LinkedHashSet<>();
     private final Map<Integer, DeathCause> dieIntents = new LinkedHashMap<Integer, DeathCause>();
     private int performedActions = 0;
+    private int conflictEvents = 0;
 
     public void requestMove(int agentId, Coords target) {
         moveIntents.put(agentId, target);
@@ -33,6 +34,11 @@ public class BearActionEffects implements StepActionContext {
 
     public void recordAction() {
         performedActions++;
+    }
+
+    /** Counts one human-bear conflict event (a bear occupying a VILLAGE/ROAD cell this tick). */
+    public void recordConflictEvent() {
+        conflictEvents++;
     }
 
     public Map<Coords, List<Integer>> moveClaimsByTarget() {
@@ -55,5 +61,9 @@ public class BearActionEffects implements StepActionContext {
 
     public int performedActions() {
         return performedActions;
+    }
+
+    public int conflictEvents() {
+        return conflictEvents;
     }
 }

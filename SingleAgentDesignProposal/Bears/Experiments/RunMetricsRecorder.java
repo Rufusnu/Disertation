@@ -20,6 +20,7 @@ public final class RunMetricsRecorder {
     private final RunConfig runConfig;
     private final List<TickMetrics> samples = new ArrayList<>();
     private int birthsSinceLastSample = 0;
+    private int conflictEventsSinceLastSample = 0;
     private final EnumMap<DeathCause, Integer> deathsSinceLastSample = new EnumMap<>(DeathCause.class);
 
     public RunMetricsRecorder(RunConfig runConfig) {
@@ -39,6 +40,13 @@ public final class RunMetricsRecorder {
     /** Called by the simulation each time a death occurs. */
     public void noteDeath(DeathCause cause) {
         deathsSinceLastSample.merge(cause, 1, Integer::sum);
+    }
+
+    /** Called by the simulation with the number of human-bear conflict events for the tick. */
+    public void noteConflictEvents(int events) {
+        if (events > 0) {
+            conflictEventsSinceLastSample += events;
+        }
     }
 
     /**
@@ -94,6 +102,7 @@ public final class RunMetricsRecorder {
                 males,
                 birthsSinceLastSample,
                 deathsSnapshot,
+                conflictEventsSinceLastSample,
                 meanSatiety,
                 pregnant,
                 meanAge
@@ -101,6 +110,7 @@ public final class RunMetricsRecorder {
 
         // Reset deltas for next sampling interval.
         birthsSinceLastSample = 0;
+        conflictEventsSinceLastSample = 0;
         for (DeathCause cause : DeathCause.values()) {
             deathsSinceLastSample.put(cause, 0);
         }

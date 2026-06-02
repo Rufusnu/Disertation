@@ -115,21 +115,34 @@ public class BearAgent extends Agent {
         currentPercept = (BearPercept) percept;
     }
 
+    @Override
     public Action selectAction() {
-        passTime();
+        // Fallback for the base Agent interface; uses internal age as a season proxy.
+        return selectAction(age);
+    }
+
+    public Action selectAction(double simulationYear) {
+        boolean hibernating = isHibernating(simulationYear);
+        passTime(hibernating);
 
         // check if death came
         if (satiety <= 0) {
             return new Die(DeathCause.STARVATION);
         }
 
-        if (age >= Settings.BEAR_MAX_AGE && RngSupport.forAgent(id).nextDouble(0, 1) <= Settings.DEATH_RATE_AFTER_MAX_AGE)  {
+        if (age >= Settings.BEAR_MAX_AGE
+                && RngSupport.forAgent(id).nextDouble(0, 1)
+                        <= Settings.DEATH_RATE_AFTER_MAX_AGE * sexOldAgeMultiplier()) {
             return new Die(DeathCause.OLD_AGE);
         }
 
         // danger on the current tile kills probabilistically
         double danger = currentPercept.currentCell() != null ? currentPercept.currentCell().danger() : 0;
-        if (danger > 0 && RngSupport.forAgent(id).nextDouble() < danger * Settings.BEAR_DANGER_DEATH_RATE_PER_TICK * ageDangerMultiplier()) {
+        if (danger > 0 && RngSupport.forAgent(id).nextDouble() < danger
+                * Settings.BEAR_DANGER_DEATH_RATE_PER_TICK
+                * ageDangerMultiplier()
+                * sexDangerMultiplier()
+                * hibernationDangerMultiplier(hibernating)) {
             return new Die(DeathCause.DANGER);
         }
 
@@ -137,6 +150,12 @@ public class BearAgent extends Agent {
             reproductionCooldownYearsRemaining = Settings.BEAR_REPRODUCTION_COOLDOWN_YEARS;
             isPregnant = false;
             return new GiveBirth();
+        }
+
+        // During hibernation bears stay in the den: no foraging, no movement,
+        // no mating events. Births can still occur (cubs are born in the den).
+        if (hibernating) {
+            return new Nothing();
         }
 
         if (canReproduceNow() && currentPercept.nearbyMaleBear()) {
@@ -167,12 +186,16 @@ public class BearAgent extends Agent {
         return new Nothing(); // no food here, no better neighbor — wait
     }
 
-    private void passTime() {
+    private void passTime(boolean hibernating) {
         // age 1 hour
         age += Settings.ONE_TICK_IN_YEARS;
         reproductionCooldownYearsRemaining = Math.max(0, reproductionCooldownYearsRemaining - Settings.ONE_TICK_IN_YEARS);
         gestationPeriod = Math.max(0, gestationPeriod - Settings.ONE_TICK_IN_YEARS);
-        satiety = Math.max(0, satiety - Settings.BEAR_SATIETY_DECAY_PER_TICK * satietyPregnantMultiplier());
+        double decay = Settings.BEAR_SATIETY_DECAY_PER_TICK * satietyPregnantMultiplier();
+        if (hibernating) {
+            decay *= Settings.BEAR_HIBERNATION_SATIETY_DECAY_MULTIPLIER;
+        }
+        satiety = Math.max(0, satiety - decay);
     }
 
     private void applySatietyFromEating(BearPercept.NeighborCellInfo cell) {
@@ -215,6 +238,33 @@ public class BearAgent extends Agent {
 
     private double satietyPregnantMultiplier() {
         return isPregnant ? Settings.BEAR_SATIETY_DECAY_PER_TICK_PREGNANT_DEBUFF : 1;
+    }
+
+    private double sexDangerMultiplier() {
+        return gender == Gender.MALE
+                ? Settings.BEAR_DANGER_DEATH_RATE_MALE_MULTIPLIER
+                : Settings.BEAR_DANGER_DEATH_RATE_FEMALE_MULTIPLIER;
+    }
+
+    private double sexOldAgeMultiplier() {
+        return gender == Gender.MALE
+                ? Settings.DEATH_RATE_AFTER_MAX_AGE_MALE_MULTIPLIER
+                : Settings.DEATH_RATE_AFTER_MAX_AGE_FEMALE_MULTIPLIER;
+    }
+
+    private double hibernationDangerMultiplier(boolean hibernating) {
+        return hibernating ? Settings.BEAR_DANGER_DEATH_RATE_HIBERNATION_MULTIPLIER : 1.0;
+    }
+
+    private boolean isHibernating(double simulationYear) {
+        double yearFraction = simulationYear - Math.floor(simulationYear);
+        double start = Settings.BEAR_HIBERNATION_START_YEAR_FRACTION;
+        double end = Settings.BEAR_HIBERNATION_END_YEAR_FRACTION;
+        if (start <= end) {
+            return yearFraction >= start && yearFraction < end;
+        }
+        // Window wraps around year boundary (e.g. Nov - Mar).
+        return yearFraction >= start || yearFraction < end;
     }
 
     private BearPercept.NeighborCellInfo chooseBestNeighbor(
@@ -265,12 +315,35 @@ public class BearAgent extends Agent {
                 Settings.BEAR_MOVEMENT_HOME_RANGE_WEIGHT_WHEN_HUNGRY,
                 hunger
         );
+        if (isDispersingSubadultMale()) {
+            crowdingWeight *= Settings.BEAR_MALE_DISPERSAL_CROWDING_WEIGHT_MULTIPLIER;
+            homeRangeWeight *= Settings.BEAR_MALE_DISPERSAL_HOME_RANGE_WEIGHT_MULTIPLIER;
+        }
         double randomNoise = randomMovementNoise(hunger);
         return foodWeight * neighbor.food()
                 - dangerWeight * neighbor.danger()
                 - crowdingWeight * neighbor.nearbyBearCount()
                 - homeRangeWeight * homeRangePenalty(neighbor)
+                + dispersalDistanceBonus(neighbor)
                 + randomNoise;
+    }
+
+    private boolean isDispersingSubadultMale() {
+        return gender == Gender.MALE
+                && age >= Settings.BEAR_MALE_DISPERSAL_MIN_AGE
+                && age <= Settings.BEAR_MALE_DISPERSAL_MAX_AGE;
+    }
+
+    private double dispersalDistanceBonus(BearPercept.NeighborCellInfo neighbor) {
+        if (!isDispersingSubadultMale() || homeX == -1) {
+            return 0.0;
+        }
+        int distance = Math.max(
+                Math.abs(neighbor.coords().x - homeX),
+                Math.abs(neighbor.coords().y - homeY)
+        );
+        int outside = Math.max(0, distance - Settings.BEAR_HOME_RANGE_RADIUS);
+        return outside * Settings.BEAR_MALE_DISPERSAL_DISTANCE_BONUS_PER_CELL;
     }
 
     private void initializeHomeRegion(BearPercept.NeighborCellInfo currentCell) {
@@ -331,5 +404,10 @@ public class BearAgent extends Agent {
     public Action decideNextAction(Percept percept) {
         this.see(percept);
         return this.selectAction();
+    }
+
+    public Action decideNextAction(Percept percept, double simulationYear) {
+        this.see(percept);
+        return this.selectAction(simulationYear);
     }
 }

@@ -65,6 +65,12 @@ public final class Settings {
     public static double BEAR_SATIETY_MAX = 1.0;
     public static double BEAR_SATIETY_DECAY_PER_TICK = 0.00075;
     public static double BEAR_SATIETY_DECAY_PER_TICK_PREGNANT_DEBUFF = 1.4;
+    /** Metabolism multiplier during hibernation; <1 means bears burn less satiety per tick. */
+    public static double BEAR_HIBERNATION_SATIETY_DECAY_MULTIPLIER = 0.35;
+    /** Fraction of simulation year at which hibernation starts (0.83 ~ early November). */
+    public static double BEAR_HIBERNATION_START_YEAR_FRACTION = 0.83;
+    /** Fraction of simulation year at which hibernation ends (0.17 ~ early March). */
+    public static double BEAR_HIBERNATION_END_YEAR_FRACTION = 0.17;
     public static double BEAR_SATIETY_GAIN_PER_EAT = 0.06;
     public static double BEAR_SATIETY_EAT_PREFERENCE_THRESHOLD = 0.55; // bear prefers to eat instead of moving when satiety is below this
     public static double BEAR_MIN_SATIETY_TO_REPRODUCE = 0.6;
@@ -79,10 +85,34 @@ public final class Settings {
     public static int BEAR_HOME_RANGE_RADIUS = 8;
     public static double BEAR_MOVEMENT_HOME_RANGE_WEIGHT_WHEN_FULL = 0.08;
     public static double BEAR_MOVEMENT_HOME_RANGE_WEIGHT_WHEN_HUNGRY = 0.02;
+    // Subadult male dispersal: in this age window males emigrate from the natal
+    // home range, biased away from crowded cells and rewarded for moving outside
+    // their home-range radius. This is the dominant dispersal mechanism in
+    // brown bears (Swenson et al., 1998; McLellan & Hovey, 2001).
+    public static double BEAR_MALE_DISPERSAL_MIN_AGE = 2.0;
+    public static double BEAR_MALE_DISPERSAL_MAX_AGE = 6.0;
+    public static double BEAR_MALE_DISPERSAL_CROWDING_WEIGHT_MULTIPLIER = 2.0;
+    public static double BEAR_MALE_DISPERSAL_HOME_RANGE_WEIGHT_MULTIPLIER = 0.20;
+    public static double BEAR_MALE_DISPERSAL_DISTANCE_BONUS_PER_CELL = 0.04;
     public static double BEAR_MAX_AGE = 30;
     public static double DEATH_RATE_AFTER_MAX_AGE = 0.000020; // ~20% per year
+    /** Sex-specific old-age mortality multipliers (females are longer-lived). */
+    public static double DEATH_RATE_AFTER_MAX_AGE_FEMALE_MULTIPLIER = 0.9;
+    public static double DEATH_RATE_AFTER_MAX_AGE_MALE_MULTIPLIER = 1.1;
     public static double BEAR_DANGER_DEATH_RATE_PER_TICK = 0.000015; // ~3-5%/yr adult mortality on average tile, much higher on village/road
     public static double BEAR_DANGER_CHILD_MULTIPLIER = 3.5;
+    /** Sex-specific danger mortality multipliers (males roam more and have higher exposure). */
+    public static double BEAR_DANGER_DEATH_RATE_FEMALE_MULTIPLIER = 0.9;
+    public static double BEAR_DANGER_DEATH_RATE_MALE_MULTIPLIER = 1.15;
+    /** During hibernation bears are sheltered and danger mortality is greatly reduced. */
+    public static double BEAR_DANGER_DEATH_RATE_HIBERNATION_MULTIPLIER = 0.35;
+
+    // Reproduction: brown bear litters average 2.0-2.5 cubs (Swenson et al. 2001).
+    // BEAR_LITTER_SIZE_STD controls between-mother variance; per-cub mortality is
+    // applied at birth time and represents perinatal losses.
+    public static double BEAR_LITTER_SIZE_MEAN = 2.2;
+    public static double BEAR_LITTER_SIZE_STD = 0.6;
+    public static double BEAR_INFANT_MORTALITY_AT_BIRTH = 0.30;
 
     private Settings() {}
 }

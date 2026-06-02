@@ -7,6 +7,7 @@ import MASInterface.Environment.Coords;
 import MASInterface.Environment.Simulation;
 import MASInterface.Environment.State;
 import Bears.BearAgent.BearAgent;
+import Bears.Experiments.RngSupport;
 import Bears.Experiments.RunMetricsRecorder;
 import Bears.Experiments.ScheduleApplier;
 
@@ -102,7 +103,8 @@ public class BearSimulation extends Simulation {
 
 					long loopStartNs = System.nanoTime();
 					long planStartNs = System.nanoTime();
-					BearSimulationBenchmark.PlanResult planResult = planActions(tickAgents, executor);
+					double simulationYearForTick = tick * Settings.ONE_TICK_IN_YEARS;
+					BearSimulationBenchmark.PlanResult planResult = planActions(tickAgents, executor, simulationYearForTick);
 					benchmark.recordPlan(System.nanoTime() - planStartNs, planResult.breakdown);
 
 					long commitStartNs = System.nanoTime();
@@ -121,7 +123,8 @@ public class BearSimulation extends Simulation {
 
 					applyScheduleForTick(tick);
 
-					Map<Integer, Action> plannedActions = planActionsNoBenchmark(tickAgents, executor);
+					double simulationYearForTick = tick * Settings.ONE_TICK_IN_YEARS;
+					Map<Integer, Action> plannedActions = planActionsNoBenchmark(tickAgents, executor, simulationYearForTick);
 					commitActionsNoBenchmark(plannedActions);
 					tick++;
 					sampleMetricsForTick(tick);
@@ -189,13 +192,13 @@ public class BearSimulation extends Simulation {
 		scheduleApplier.applyDue(simulationYear, tick);
 	}
 
-	private Map<Integer, Action> planActionsNoBenchmark(List<BearAgent> agentList, ExecutorService executor) throws Exception {
+	private Map<Integer, Action> planActionsNoBenchmark(List<BearAgent> agentList, ExecutorService executor, double simulationYear) throws Exception {
 		List<Callable<Map.Entry<Integer, Action>>> tasks = new ArrayList<Callable<Map.Entry<Integer, Action>>>();
 
 		for (BearAgent bearAgent : agentList) {
 			tasks.add(() -> {
 				Percept percept = this.environment.getPercept(bearAgent);
-				Action action = bearAgent.decideNextAction(percept);
+				Action action = bearAgent.decideNextAction(percept, simulationYear);
 				return Map.entry(bearAgent.getId(), action);
 			});
 		}
@@ -209,7 +212,7 @@ public class BearSimulation extends Simulation {
 		return plannedActions;
 	}
 
-	private BearSimulationBenchmark.PlanResult planActions(List<BearAgent> agentList, ExecutorService executor) throws Exception {
+	private BearSimulationBenchmark.PlanResult planActions(List<BearAgent> agentList, ExecutorService executor, double simulationYear) throws Exception {
 		BearSimulationBenchmark.PlanBreakdown breakdown = new BearSimulationBenchmark.PlanBreakdown();
 		LongAdder perceptNsAdder = new LongAdder();
 		LongAdder decideActionNsAdder = new LongAdder();
@@ -226,7 +229,7 @@ public class BearSimulation extends Simulation {
 				perceptNsAdder.add(System.nanoTime() - perceptStartNs);
 
 				long decideStartNs = System.nanoTime();
-				Action action = bearAgent.decideNextAction(percept);
+				Action action = bearAgent.decideNextAction(percept, simulationYear);
 				decideActionNsAdder.add(System.nanoTime() - decideStartNs);
 				return Map.entry(bearAgent.getId(), action);
 			});
@@ -297,6 +300,8 @@ public class BearSimulation extends Simulation {
 		applyMoveIntents(bearState, effects);
 		breakdown.applyMoveIntentsNs = System.nanoTime() - applyMoveIntentsStartNs;
 
+		recordHumanConflictEvents(bearState, effects);
+
 		long restoreRandomFoodStartNs = System.nanoTime();
         restoreRandomFood(); // todo move in another place
 		breakdown.restoreRandomFoodNs = System.nanoTime() - restoreRandomFoodStartNs;
@@ -337,6 +342,7 @@ public class BearSimulation extends Simulation {
 		applyBirths(effects);
 		applyFoodReductions(bearState, effects);
 		applyMoveIntents(bearState, effects);
+		recordHumanConflictEvents(bearState, effects);
 		restoreRandomFood();
 
 		for (int i = 0; i < effects.performedActions(); i++) {
@@ -360,17 +366,60 @@ public class BearSimulation extends Simulation {
 
 	private void applyBirths(BearActionEffects effects) {
         for (Integer motherAgentId : effects.birthIntents()) {
-            BearAgent childAgent = new BearAgent(++lastAgentId, 0);
-            ((BearEnvironment) this.environment).setMotherCoords(childAgent.getId(), motherAgentId); // put agent on the mother location on map
-			((BearEnvironment) this.environment).setAgentGender(childAgent.getId(), childAgent.getGender());
-            if (Settings.VERBOSE) {
-                System.out.println(childAgent + " created.");
+            int litterSize = sampleLitterSize();
+            for (int cubIndex = 0; cubIndex < litterSize; cubIndex++) {
+                if (RngSupport.environment().nextDouble() < Settings.BEAR_INFANT_MORTALITY_AT_BIRTH) {
+                    // Perinatal loss: cub is born but does not survive to be added to the population.
+                    continue;
+                }
+                BearAgent childAgent = new BearAgent(++lastAgentId, 0);
+                ((BearEnvironment) this.environment).setMotherCoords(childAgent.getId(), motherAgentId);
+                ((BearEnvironment) this.environment).setAgentGender(childAgent.getId(), childAgent.getGender());
+                if (Settings.VERBOSE) {
+                    System.out.println(childAgent + " created.");
+                }
+                agentsById.put(childAgent.getId(), childAgent);
+                if (metricsRecorder != null) {
+                    metricsRecorder.noteBirth();
+                }
             }
-			agentsById.put(childAgent.getId(), childAgent);
-			if (metricsRecorder != null) {
-				metricsRecorder.noteBirth();
-			}
         }
+    }
+
+    private int sampleLitterSize() {
+        double sample = Settings.BEAR_LITTER_SIZE_MEAN
+                + RngSupport.environment().nextGaussian() * Settings.BEAR_LITTER_SIZE_STD;
+        int rounded = (int) Math.round(sample);
+        if (rounded < 1) {
+            return 1;
+        }
+        return rounded;
+    }
+
+    /**
+     * Counts how many bears currently occupy a VILLAGE or ROAD cell. This is a
+     * proxy for human-bear conflict exposure (cf. Pop et al. 2018 on Romanian
+     * brown bear conflict patterns) and is reported per tick in run CSVs.
+     */
+    private void recordHumanConflictEvents(BearState bearState, BearActionEffects effects) {
+        if (metricsRecorder == null) {
+            return;
+        }
+        for (Integer agentId : agentsById.keySet()) {
+            Coords coords = bearState.getAgentCoords(agentId);
+            if (coords.x < 0 || coords.y < 0) {
+                continue;
+            }
+            BearCell cell = bearState.getBearCell(coords.x, coords.y);
+            if (cell == null) {
+                continue;
+            }
+            Object type = cell.cellType();
+            if (type == BearCellType.VILLAGE || type == BearCellType.ROAD) {
+                effects.recordConflictEvent();
+            }
+        }
+        metricsRecorder.noteConflictEvents(effects.conflictEvents());
     }
 
 	private void applyDeaths(BearActionEffects effects) {
