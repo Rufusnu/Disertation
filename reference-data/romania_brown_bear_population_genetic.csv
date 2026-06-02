@@ -1,0 +1,12 @@
+# Romanian brown bear (Ursus arctos) abundance from genetic capture-recapture studies.
+# These are not annual census points; they are independent abundance estimates
+# from non-invasive genetic sampling (hair traps, scat). They are listed here
+# as discrete validation anchors that calibration runs may target separately
+# from the annual game-census series in romania_brown_bear_population.csv.
+#
+# Units: estimated number of individuals (all age classes), point estimate.
+# Columns: year, population
+# See README.md for source citations and confidence intervals.
+year,population
+2014,6750
+2022,8093

@@ -343,25 +343,66 @@ public final class BatchRunner {
     public static void main(String[] args) throws IOException {
         Path outputDir = Paths.get(args.length > 0 ? args[0] : "experiment-output");
 
-        // Smoke-test scenario.
-        long maxTicks = (long) Math.ceil(20.0 / Settings.ONE_TICK_IN_YEARS); // 5 simulated years
+        // Smoke-test scenario. Length defaults to 20 simulated years, override
+        // with -Dyears=<n> for shorter dry runs.
+        double smokeYears = 20.0;
+        String yearsProp = System.getProperty("years");
+        if (yearsProp != null && !yearsProp.isBlank()) {
+            smokeYears = Double.parseDouble(yearsProp.trim());
+        }
+        long maxTicks = (long) Math.ceil(smokeYears / Settings.ONE_TICK_IN_YEARS);
 
-        // Reference data: load from CSV if -Dreference=<path> is provided,
-        // otherwise fall back to a synthetic stub so the smoke test still
-        // exercises the comparison pipeline end-to-end.
+        // Reference data: by default load the in-repo Romanian brown bear
+        // annual series (see reference-data/README.md for sources). Override
+        // with -Dreference=<path> to point at a different CSV. Calendar years
+        // in the CSV are shifted to simulation years (0,1,...) using
+        // -Dreference.startYear (default: first year present in the CSV).
         NavigableMap<Integer, Double> reference;
-        String referencePath = System.getProperty("reference");
-        if (referencePath != null && !referencePath.isBlank()) {
-            reference = ReferenceData.loadAnnualPopulation(Paths.get(referencePath));
-            System.out.println("Loaded reference series with " + reference.size() + " years from " + referencePath);
+        String referencePath = System.getProperty(
+                "reference",
+                "reference-data/romania_brown_bear_population.csv");
+        Path resolvedReference = Paths.get(referencePath);
+        if (!resolvedReference.isAbsolute() && !java.nio.file.Files.exists(resolvedReference)) {
+            // Resolve robustly: search upward from the current working directory
+            // so the same default works whether the JVM was started from the
+            // repo root, from SingleAgentDesignProposal/, or from a build dir.
+            Path probe = Paths.get("").toAbsolutePath();
+            for (int depth = 0; depth < 6; depth++) {
+                Path candidate = probe.resolve(referencePath);
+                if (java.nio.file.Files.exists(candidate)) {
+                    resolvedReference = candidate;
+                    break;
+                }
+                Path parent = probe.getParent();
+                if (parent == null) {
+                    break;
+                }
+                probe = parent;
+            }
+        }
+        if (java.nio.file.Files.exists(resolvedReference)) {
+            NavigableMap<Integer, Double> raw = ReferenceData.loadAnnualPopulation(resolvedReference);
+            String startYearProp = System.getProperty("reference.startYear");
+            int startYear;
+            if (startYearProp != null && !startYearProp.isBlank()) {
+                startYear = Integer.parseInt(startYearProp.trim());
+            } else {
+                startYear = raw.isEmpty() ? 0 : raw.firstKey();
+            }
+            reference = new TreeMap<>();
+            for (Map.Entry<Integer, Double> e : raw.entrySet()) {
+                reference.put(e.getKey() - startYear, e.getValue());
+            }
+            System.out.println("Loaded reference series with " + reference.size()
+                    + " years from " + resolvedReference.toAbsolutePath()
+                    + " (calendar start year = " + startYear + ")");
         } else {
             reference = new TreeMap<>();
-            // Synthetic reference: linear growth from initial population.
-            // Replace with real data when available.
             for (int year = 0; year <= 5; year++) {
                 reference.put(year, 500.0 + year * 30.0);
             }
-            System.out.println("No -Dreference=<path> given; using synthetic reference for smoke test.");
+            System.out.println("Reference CSV not found at " + resolvedReference
+                    + "; using synthetic reference for smoke test.");
         }
 
         // Optional time-varying parameter schedule. Use -Dschedule=<path>
@@ -375,12 +416,27 @@ public final class BatchRunner {
                     + " entries from " + schedulePath);
         }
 
+        // Initial bear count: by default, take the reference population at
+        // simulation year 0 (i.e. the first year present in the loaded CSV)
+        // so the simulation starts from the same baseline as the empirical
+        // series. Override with -DinitialBears=<n> if needed.
+        int initialBears;
+        String initialBearsProp = System.getProperty("initialBears");
+        if (initialBearsProp != null && !initialBearsProp.isBlank()) {
+            initialBears = Integer.parseInt(initialBearsProp.trim());
+        } else if (!reference.isEmpty()) {
+            initialBears = (int) Math.round(reference.firstEntry().getValue());
+        } else {
+            initialBears = 500;
+        }
+        System.out.println("Initial bear count for scenario: " + initialBears);
+
         Scenario baseline = new Scenario(
                 "baseline",
                 3,           // replicates
                 42L,         // base seed
                 maxTicks,
-                500,         // initial bears
+                initialBears,
                 100,         // map length
                 new LinkedHashMap<>(), // no overrides
                 reference,

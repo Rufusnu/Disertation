@@ -1,0 +1,3 @@
+tick,simulationYear,parameter,oldValue,newValue
+0,0.0000,BEAR_DANGER_DEATH_RATE_PER_TICK,1.5E-5,2.0E-5
+0,0.0000,FOOD_GROWN_PER_TICK,0.005,0.005

@@ -1,0 +1,9 @@
+﻿java : Error: Could not find or load main class Bears.Experiments.BatchRunner
+At line:1 char:1
++ java '-Dyears=5' '-Dreference.startYear=2005' -cp 'SingleAgentDesignP ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Error: Could no...nts.BatchRunner 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Caused by: java.lang.ClassNotFoundException: Bears.Experiments.BatchRunner

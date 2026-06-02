@@ -1,0 +1,29 @@
+# Romanian brown bear (Ursus arctos) annual population estimates.
+# Source: Ministry of Environment / Romanian Hunters' and Anglers' Association
+# (AGVPS) annual game census ("evaluarea anuala a efectivelor de ursi"),
+# as compiled and reported in the references listed in this directory's README.
+# Method: spring den-emergence counts and track surveys reported by hunting
+# management units, then aggregated nationally. These figures are widely used
+# in Romanian wildlife policy but are known to overestimate true abundance
+# relative to genetic capture-recapture estimates (see README).
+#
+# Units: estimated number of individuals (all age classes) on Romanian territory.
+# Columns: year (calendar year), population (point estimate, individuals)
+year,population
+2005,5800
+2006,6150
+2007,6500
+2008,6700
+2009,6300
+2010,6100
+2011,5950
+2012,6050
+2013,6050
+2014,6100
+2015,6200
+2016,6050
+2017,6200
+2018,6400
+2019,6500
+2020,7050
+2021,7500
