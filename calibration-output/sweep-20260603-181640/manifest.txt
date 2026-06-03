@@ -1,0 +1,16 @@
+Phase-1 calibration manifest
+============================
+timestamp=2026-06-03T18:16:40.666669700
+lhsPoints=4
+refineTop=1
+nmIterations=3
+replicates=1
+initialBears=600
+mapLength=120
+mapSource=reference-data/romania-map-stub.txt
+burnInYears=1.0
+evalEndYears=3.0
+kTarget=600.0
+seed=42
+ONE_TICK_IN_YEARS=1.140771E-4
+params=[CalibrationParam[settingsField=BEAR_SATIETY_DECAY_PER_TICK, min=3.0E-4, max=0.0015], CalibrationParam[settingsField=BEAR_HIBERNATION_SATIETY_DECAY_MULTIPLIER, min=0.15, max=0.55], CalibrationParam[settingsField=BEAR_LITTER_SIZE_MEAN, min=1.6, max=2.8], CalibrationParam[settingsField=BEAR_INFANT_MORTALITY_AT_BIRTH, min=0.15, max=0.45], CalibrationParam[settingsField=BEAR_DANGER_DEATH_RATE_PER_TICK, min=5.0E-6, max=4.0E-5], CalibrationParam[settingsField=BEAR_REPRODUCTION_COOLDOWN_YEARS, min=2.0, max=4.0]]
