@@ -57,4 +57,25 @@ public enum BearCellType implements Cell.CellType {
     public char mapSymbol() {
         return mapSymbol;
     }
+
+    /**
+     * Inverse of {@link #mapSymbol()}: parse a single character from a raster
+     * grid file back into the matching cell type. Used by {@code MapGridLoader}
+     * when loading pre-processed Romania CLC rasters.
+     */
+    public static BearCellType fromChar(char c) {
+        switch (c) {
+            case 'F': return FOREST;
+            case 'I': return FIELD;
+            case 'V': return VILLAGE;
+            case 'R': return ROAD;
+            case 'M': return MOUNTAIN;
+            case '~':
+            case 'N':
+            case ' ':
+                return NONE;
+            default:
+                throw new IllegalArgumentException("Unknown cell symbol: '" + c + "'");
+        }
+    }
 }

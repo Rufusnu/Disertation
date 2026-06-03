@@ -4,6 +4,12 @@ public final class Settings {
     public static int AGENTS_NUMBER_SINGLE_EXECUTION = 1000;
     public static int TEST_EXECUTIONS_PER_AGENT_NUMBER = 50;
     public static int MAP_LENGTH = 100;
+    /**
+     * Optional path to a habitat grid file (see Bears.BearEnvironment.MapGridLoader).
+     * When non-empty, BatchRunner loads the grid instead of generating a random
+     * uniform map, and overrides {@link #MAP_LENGTH} with the grid size.
+     */
+    public static String MAP_SOURCE = "";
     public static int THREAD_COUNT = 16;
     public static int SIMULATION_LENGTH = 100; // in seconds (wall-clock budget when SIMULATION_MAX_TICKS <= 0)
     /** If > 0, simulation runs for exactly this many ticks regardless of wall time. Used by the experiment pipeline. */

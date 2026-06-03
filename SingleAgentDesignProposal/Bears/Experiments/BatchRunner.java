@@ -4,6 +4,7 @@ import Bears.BearEnvironment.BearEnvironment;
 import Bears.BearEnvironment.BearSimulation;
 import Bears.BearEnvironment.BearState;
 import Bears.BearEnvironment.DeathCause;
+import Bears.BearEnvironment.MapGridLoader;
 import MASInterface.Settings;
 
 import java.io.IOException;
@@ -68,7 +69,7 @@ public final class BatchRunner {
 
         List<String> metadataHeader = Arrays.asList(
                 "scenarioId", "runId", "replicateIndex", "seed", "maxTicks",
-                "initialBearCount", "mapLength", "parameterOverrides",
+                "initialBearCount", "mapLength", "mapSource", "parameterOverrides",
                 "scheduleSource", "scheduleEntries"
         );
         List<String> summaryHeader = Arrays.asList(
@@ -107,7 +108,8 @@ public final class BatchRunner {
                             String.valueOf(runConfig.seed()),
                             String.valueOf(runConfig.maxTicks()),
                             String.valueOf(scenario.initialBearCount()),
-                            String.valueOf(scenario.mapLength()),
+                            String.valueOf(Settings.MAP_LENGTH),
+                            scenario.mapSource() == null ? "" : scenario.mapSource(),
                             formatOverrides(runConfig.parameterOverrides()),
                             scenario.parameterSchedule().sourceDescription(),
                             String.valueOf(scenario.parameterSchedule().entries().size())
@@ -170,7 +172,19 @@ public final class BatchRunner {
         ScheduleApplier scheduleApplier = new ScheduleApplier(scenario.parameterSchedule());
         simulation.setScheduleApplier(scheduleApplier);
 
-        BearState initState = BearState.getInitState(scenario.mapLength());
+        BearState initState;
+        String mapSource = scenario.mapSource();
+        if (mapSource != null && !mapSource.isBlank()) {
+            Path gridPath = resolveDataPath(mapSource);
+            MapGridLoader.Grid grid = MapGridLoader.load(gridPath);
+            // Several code paths still read Settings.MAP_LENGTH; keep it in
+            // sync with the loaded grid so they agree.
+            Settings.MAP_LENGTH = grid.mapLength();
+            initState = BearState.getInitStateFromGrid(grid);
+            System.out.println("    map=" + gridPath + " (" + grid.width + "x" + grid.height + ")");
+        } else {
+            initState = BearState.getInitState(scenario.mapLength());
+        }
         try {
             simulation.startNoPrompt(initState);
         } finally {
@@ -443,12 +457,52 @@ public final class BatchRunner {
                 42L,         // base seed
                 maxTicks,
                 initialBears,
-                100,         // map length
+                100,         // map length (overridden by grid when -Dmap.source is set)
                 new LinkedHashMap<>(), // no overrides
                 reference,
-                schedule
+                schedule,
+                resolveOptionalMapSource()
         );
 
         runScenarios(java.util.Collections.singletonList(baseline), outputDir);
+    }
+
+    /**
+     * Resolves a workspace-relative data path by searching upward from the
+     * current working directory; used for both the reference series and the
+     * habitat grid so the same defaults work whether the JVM is started from
+     * the repo root, from {@code SingleAgentDesignProposal/}, or from a build
+     * directory.
+     */
+    private static Path resolveDataPath(String relativeOrAbsolute) {
+        Path direct = Paths.get(relativeOrAbsolute);
+        if (direct.isAbsolute() || java.nio.file.Files.exists(direct)) {
+            return direct;
+        }
+        Path probe = Paths.get("").toAbsolutePath();
+        for (int depth = 0; depth < 6; depth++) {
+            Path candidate = probe.resolve(relativeOrAbsolute);
+            if (java.nio.file.Files.exists(candidate)) {
+                return candidate;
+            }
+            Path parent = probe.getParent();
+            if (parent == null) {
+                break;
+            }
+            probe = parent;
+        }
+        return direct;
+    }
+
+    private static String resolveOptionalMapSource() {
+        String prop = System.getProperty("map.source");
+        if (prop == null || prop.isBlank()) {
+            // Honour Settings.MAP_SOURCE as a secondary opt-in.
+            if (Settings.MAP_SOURCE != null && !Settings.MAP_SOURCE.isBlank()) {
+                return Settings.MAP_SOURCE;
+            }
+            return "";
+        }
+        return prop.trim();
     }
 }

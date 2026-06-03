@@ -24,6 +24,13 @@ public final class Scenario {
     private final NavigableMap<Integer, Double> referencePopulationByYear;
     /** Optional time-varying parameter schedule. May be empty (= stationary). */
     private final ParameterSchedule parameterSchedule;
+    /**
+     * Optional path to a pre-processed habitat grid (see
+     * {@code Bears.BearEnvironment.MapGridLoader}). When set, BatchRunner
+     * loads the grid instead of generating a random uniform map and uses the
+     * grid's size as the effective {@link Settings#MAP_LENGTH}.
+     */
+    private final String mapSource;
 
     public Scenario(
             String scenarioId,
@@ -36,7 +43,7 @@ public final class Scenario {
             NavigableMap<Integer, Double> referencePopulationByYear
     ) {
         this(scenarioId, replicates, baseSeed, maxTicks, initialBearCount, mapLength,
-                parameterOverrides, referencePopulationByYear, ParameterSchedule.empty());
+                parameterOverrides, referencePopulationByYear, ParameterSchedule.empty(), "");
     }
 
     public Scenario(
@@ -49,6 +56,22 @@ public final class Scenario {
             Map<String, String> parameterOverrides,
             NavigableMap<Integer, Double> referencePopulationByYear,
             ParameterSchedule parameterSchedule
+    ) {
+        this(scenarioId, replicates, baseSeed, maxTicks, initialBearCount, mapLength,
+                parameterOverrides, referencePopulationByYear, parameterSchedule, "");
+    }
+
+    public Scenario(
+            String scenarioId,
+            int replicates,
+            long baseSeed,
+            long maxTicks,
+            int initialBearCount,
+            int mapLength,
+            Map<String, String> parameterOverrides,
+            NavigableMap<Integer, Double> referencePopulationByYear,
+            ParameterSchedule parameterSchedule,
+            String mapSource
     ) {
         this.scenarioId = scenarioId;
         this.replicates = replicates;
@@ -65,6 +88,7 @@ public final class Scenario {
         this.parameterSchedule = parameterSchedule != null
                 ? parameterSchedule
                 : ParameterSchedule.empty();
+        this.mapSource = mapSource != null ? mapSource : "";
     }
 
     public String scenarioId() { return scenarioId; }
@@ -76,4 +100,5 @@ public final class Scenario {
     public Map<String, String> parameterOverrides() { return parameterOverrides; }
     public NavigableMap<Integer, Double> referencePopulationByYear() { return referencePopulationByYear; }
     public ParameterSchedule parameterSchedule() { return parameterSchedule; }
+    public String mapSource() { return mapSource; }
 }

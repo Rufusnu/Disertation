@@ -59,6 +59,41 @@ public class BearState extends State {
 		return state;
 	}
 
+	/**
+	 * Initial state backed by a pre-processed habitat grid (see
+	 * {@link MapGridLoader}). The grid replaces the random per-cell terrain
+	 * sampler; per-cell food and danger are still drawn from each type's
+	 * distribution via {@link BearCell#setBearCellType(BearCellType)}, so
+	 * landscape structure becomes deterministic per grid while small-scale
+	 * variability remains stochastic per replicate.
+	 */
+	public static BearState getInitStateFromGrid(MapGridLoader.Grid grid) {
+		int mapLength = grid.mapLength();
+		BearState state = new BearState();
+		state.mapLength = mapLength;
+		state.map = new int[mapLength][mapLength];
+		state.cellGrid = new BearCell[mapLength][mapLength];
+		for (int x = 0; x < mapLength; x++) {
+			for (int y = 0; y < mapLength; y++) {
+				BearCell cell = new BearCell();
+				cell.setBearCellType(grid.cells[x][y]);
+				state.cellGrid[x][y] = cell;
+				if (grid.cells[x][y] == BearCellType.NONE) {
+					state.map[x][y] = BLOCKED;
+				}
+			}
+		}
+		// Always keep a 1-cell BLOCKED frame so the simulation's edge
+		// assumptions hold even when the loaded grid touches the border.
+		state.padMap(state);
+		state.agentsCoords = new HashMap<Integer, Coords>();
+		state.agentGenders = new HashMap<Integer, BearAgent.Gender>();
+		state.agentCounts = new int[mapLength][mapLength];
+		state.maleAgentCounts = new int[mapLength][mapLength];
+		state.agentsActions = 0;
+		return state;
+	}
+
 	/** Constructs a new vacuum state. */
 	public BearState() {
 	}
@@ -73,7 +108,7 @@ public class BearState extends State {
 
 
 	public void setAgentRandomCoords(int agentId) {
-		putAgent(agentId, getFreeTile());
+		putAgent(agentId, getInitialBearTile());
 	}
 
 	public void setAgentGender(int agentId, BearAgent.Gender gender) {
@@ -116,6 +151,41 @@ public class BearState extends State {
 			coords = getRandomTile();
 		}
 		return coords;
+	}
+
+	/**
+	 * Picks an initial spawn tile that respects habitat suitability:
+	 * forests first, then mountains, then fields as a fallback. Villages,
+	 * roads, and blocked cells are never chosen. If no suitable cell exists
+	 * after a bounded number of tries (e.g. forest-less map), the search
+	 * relaxes to any non-blocked non-V/non-R cell, and finally to any
+	 * non-blocked cell so we cannot deadlock.
+	 */
+	private Coords getInitialBearTile() {
+		final int maxTries = Math.max(200, mapLength * 4);
+		// Tier 1: forest only.
+		for (int i = 0; i < maxTries; i++) {
+			Coords c = getRandomTile();
+			if (isBlocked(c.x, c.y)) continue;
+			BearCellType t = cellGrid[c.x][c.y].bearCellType();
+			if (t == BearCellType.FOREST) return c;
+		}
+		// Tier 2: forest or mountain.
+		for (int i = 0; i < maxTries; i++) {
+			Coords c = getRandomTile();
+			if (isBlocked(c.x, c.y)) continue;
+			BearCellType t = cellGrid[c.x][c.y].bearCellType();
+			if (t == BearCellType.FOREST || t == BearCellType.MOUNTAIN) return c;
+		}
+		// Tier 3: anything wild (forest/mountain/field), never villages/roads.
+		for (int i = 0; i < maxTries; i++) {
+			Coords c = getRandomTile();
+			if (isBlocked(c.x, c.y)) continue;
+			BearCellType t = cellGrid[c.x][c.y].bearCellType();
+			if (t != BearCellType.VILLAGE && t != BearCellType.ROAD && t != BearCellType.NONE) return c;
+		}
+		// Tier 4: any non-blocked tile (last-resort safety).
+		return getFreeTile();
 	}
 
 	public void generateMap(BearState state) {
