@@ -98,6 +98,10 @@ public class BearSimulation extends Simulation {
 						System.out.println("Bears went extinct after " + benchmark.ticks + " ticks.");
 						break;
 					}
+					if (Settings.POPULATION_CAP > 0 && tickAgents.size() > Settings.POPULATION_CAP) {
+						System.out.println("Population cap " + Settings.POPULATION_CAP + " exceeded at tick " + tick + " (size=" + tickAgents.size() + "); aborting.");
+						break;
+					}
 
 					applyScheduleForTick(tick);
 
@@ -118,6 +122,9 @@ public class BearSimulation extends Simulation {
 				while (shouldContinue(endTimeMillis, maxTicks, tick)) {
 					List<BearAgent> tickAgents = snapshotAgents();
 					if (tickAgents.isEmpty()) {
+						break;
+					}
+					if (Settings.POPULATION_CAP > 0 && tickAgents.size() > Settings.POPULATION_CAP) {
 						break;
 					}
 
