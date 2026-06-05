@@ -171,6 +171,9 @@ public class BearSimulation extends Simulation {
 	}
 
 	private boolean shouldContinue(long endTimeMillis, long maxTicks, long currentTick) {
+		if (Settings.STOP_REQUESTED) {
+			return false;
+		}
 		if (maxTicks > 0) {
 			return currentTick < maxTicks;
 		}

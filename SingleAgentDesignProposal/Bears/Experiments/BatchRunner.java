@@ -81,9 +81,17 @@ public final class BatchRunner {
         );
 
         for (Scenario scenario : scenarios) {
+            if (Settings.STOP_REQUESTED) {
+                System.out.println("Stop requested. Aborting remaining scenarios.");
+                break;
+            }
             System.out.println("===== Scenario: " + scenario.scenarioId()
                     + " (replicates=" + scenario.replicates() + ") =====");
             for (int replicate = 0; replicate < scenario.replicates(); replicate++) {
+                if (Settings.STOP_REQUESTED) {
+                    System.out.println("Stop requested. Aborting remaining replicates for scenario " + scenario.scenarioId() + ".");
+                    break;
+                }
                 String runId = scenario.scenarioId() + "-r" + replicate;
                 long seed = deriveSeed(scenario.baseSeed(), replicate);
                 RunConfig runConfig = new RunConfig(

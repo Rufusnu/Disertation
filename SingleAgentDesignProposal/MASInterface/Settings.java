@@ -16,6 +16,8 @@ public final class Settings {
     public static long SIMULATION_MAX_TICKS = 0;
     /** If > 0, simulation aborts the tick loop once live agent count exceeds this. Used by calibration to bound runaway sims. */
     public static long POPULATION_CAP = 0;
+    /** UI/requested hard stop for currently running simulation/batch. */
+    public static volatile boolean STOP_REQUESTED = false;
     public static double ONE_TICK_IN_YEARS = 0.0001140771; // currently == 1 hour
 
     public static boolean VERBOSE = false;

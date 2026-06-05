@@ -1,6 +1,7 @@
 package Bears.Experiments;
 
 import Bears.BearEnvironment.BearCellType;
+import Bears.BearEnvironment.DeathCause;
 import Bears.BearEnvironment.MapGridLoader;
 import MASInterface.Settings;
 
@@ -18,6 +19,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JProgressBar;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
@@ -31,8 +33,12 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.Image;
+import java.awt.Insets;
 import java.awt.RenderingHints;
+import java.awt.BasicStroke;
 import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -47,6 +53,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -55,12 +62,16 @@ import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.TreeMap;
+import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.io.BufferedReader;
 
 /**
  * Minimal desktop UI for dissertation demos:
  * - inspect/apply Settings values,
  * - define and run a scenario,
- * - preview the current map file.
+ * - preview the generated simulation map.
  */
 public final class BatchRunnerUI extends JFrame {
 
@@ -73,14 +84,17 @@ public final class BatchRunnerUI extends JFrame {
     private final JTextField initialBearsField = new JTextField("2000");
     private final JTextField mapLengthField = new JTextField("200");
     private final JTextField baseSeedField = new JTextField("42");
-    private final JTextField mapSourceField = new JTextField("reference-data/romania-map-clc2018.txt");
+    private final JTextField mapSourceField = new JTextField("map-data/u2018_clc2018_v2020_20u1_raster100m/DATA/U2018_CLC2018_V2020_20u1.tif");
     private final JTextField scheduleField = new JTextField("SingleAgentDesignProposal/Bears/Experiments/Schedules/schedule.csv");
     private final JTextField referenceField = new JTextField("reference-data/romania_brown_bear_population.csv");
     private final JTextField outputDirField = new JTextField("experiment-output");
+    private final JButton runScenarioButton = new JButton("Run scenario");
+    private final JButton stopScenarioButton = new JButton("Force stop");
 
     private final JComboBox<String> overrideFieldCombo = new JComboBox<>();
+    private final JTextField overrideYearField = new JTextField(6);
     private final JTextField overrideValueField = new JTextField(14);
-    private final DefaultTableModel overridesModel = new DefaultTableModel(new String[]{"Settings field", "Value"}, 0) {
+    private final DefaultTableModel overridesModel = new DefaultTableModel(new String[]{"Year (optional)", "Settings field", "Value"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return true;
@@ -89,10 +103,25 @@ public final class BatchRunnerUI extends JFrame {
     private final JTable overridesTable = new JTable(overridesModel);
 
     private final JTextArea logArea = new JTextArea();
+    private final PopulationChartPanel populationChartPanel = new PopulationChartPanel();
+    private final JComboBox<String> chartSelectorCombo = new JComboBox<>();
+    private final JComboBox<ChartTimeStep> chartTimeStepCombo = new JComboBox<>();
+    private final Map<String, ChartSeriesData> chartSeriesByKey = new LinkedHashMap<>();
+    private BatchRunner.BatchOutcome lastChartOutcome = null;
+    private final JProgressBar runProgressBar = new JProgressBar(0, 1);
+    private final JLabel progressStateValueLabel = new JLabel("Idle");
+    private final JLabel progressReplicateValueLabel = new JLabel("- / -");
+    private final JLabel progressEtaValueLabel = new JLabel("N/A");
+    private final JLabel progressElapsedValueLabel = new JLabel("00:00:00");
+    private RunProgressTracker progressTracker = null;
+    private SwingWorker<BatchRunner.BatchOutcome, String> currentRunWorker = null;
 
     private final JTextField previewMapPathField = new JTextField("reference-data/romania-map-clc2018.txt");
     private final JLabel mapStatsLabel = new JLabel("No map loaded.");
     private final MapPreviewPanel mapPreviewPanel = new MapPreviewPanel();
+
+    private static final Pattern RUN_REPLICATE_PATTERN = Pattern.compile("-r(\\d+)\\b");
+    private static final Path DEFAULT_MASK_PATH = Paths.get("map-data", "romania-outline", "gadm41_ROU.gpkg");
 
     public BatchRunnerUI() {
         super("Bear Simulation - Minimal Scenario UI");
@@ -103,13 +132,13 @@ public final class BatchRunnerUI extends JFrame {
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Settings", buildSettingsTab());
         tabs.addTab("Scenario", buildScenarioTab());
+        tabs.addTab("Charts", buildChartsTab());
         tabs.addTab("Map", buildMapTab());
 
         setContentPane(tabs);
 
         loadSettingsIntoTable();
         loadOverrideFieldCombo();
-        previewMapPathField.setText(mapSourceField.getText().trim());
     }
 
     private JPanel buildSettingsTab() {
@@ -155,7 +184,7 @@ public final class BatchRunnerUI extends JFrame {
         addField(form, "Initial bears", initialBearsField);
         addField(form, "Map length", mapLengthField);
         addField(form, "Base seed", baseSeedField);
-        addField(form, "Map source", mapSourceField);
+        addField(form, "Source raster map", mapSourceField);
         addField(form, "Schedule file", scheduleField);
         addField(form, "Reference CSV", referenceField);
         addField(form, "Output directory", outputDirField);
@@ -173,6 +202,8 @@ public final class BatchRunnerUI extends JFrame {
         addOverrideButton.addActionListener(e -> addOverride());
         JButton removeOverrideButton = new JButton("Remove selected");
         removeOverrideButton.addActionListener(e -> removeSelectedOverride());
+        addOverridePanel.add(new JLabel("Year"));
+        addOverridePanel.add(overrideYearField);
         addOverridePanel.add(overrideFieldCombo);
         addOverridePanel.add(overrideValueField);
         addOverridePanel.add(addOverrideButton);
@@ -188,12 +219,16 @@ public final class BatchRunnerUI extends JFrame {
         JButton loadProfileButton = new JButton("Load scenario profile");
         loadProfileButton.addActionListener(e -> loadScenarioProfile());
 
-        JButton runButton = new JButton("Run scenario");
-        runButton.addActionListener(e -> runScenario());
+        runScenarioButton.addActionListener(e -> runScenario());
+        stopScenarioButton.setEnabled(false);
+        stopScenarioButton.addActionListener(e -> forceStopCurrentScenario());
 
         actionsPanel.add(saveProfileButton);
         actionsPanel.add(loadProfileButton);
-        actionsPanel.add(runButton);
+        actionsPanel.add(runScenarioButton);
+        actionsPanel.add(stopScenarioButton);
+
+        JPanel progressPanel = buildProgressPanel();
 
         logArea.setEditable(false);
         logArea.setLineWrap(true);
@@ -204,12 +239,137 @@ public final class BatchRunnerUI extends JFrame {
         JPanel upper = new JPanel(new BorderLayout(6, 6));
         upper.add(form, BorderLayout.NORTH);
         upper.add(overridesPanel, BorderLayout.CENTER);
-        upper.add(actionsPanel, BorderLayout.SOUTH);
+        JPanel south = new JPanel(new BorderLayout(6, 6));
+        south.add(actionsPanel, BorderLayout.NORTH);
+        south.add(progressPanel, BorderLayout.CENTER);
+        upper.add(south, BorderLayout.SOUTH);
 
         JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, upper, logScroll);
         split.setResizeWeight(0.6);
 
         panel.add(split, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel buildChartsTab() {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
+        populationChartPanel.setBorder(BorderFactory.createTitledBorder("Population over time"));
+        populationChartPanel.setPreferredSize(new Dimension(900, 620));
+
+        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        top.add(new JLabel("Graph"));
+        chartSelectorCombo.addActionListener(e -> refreshSelectedChart());
+        top.add(chartSelectorCombo);
+        top.add(new JLabel("Time step"));
+        if (chartTimeStepCombo.getItemCount() == 0) {
+            for (ChartTimeStep ts : ChartTimeStep.values()) {
+                chartTimeStepCombo.addItem(ts);
+            }
+            chartTimeStepCombo.setSelectedItem(ChartTimeStep.YEAR);
+        }
+        chartTimeStepCombo.addActionListener(e -> refreshChartsForSelectedTimeStep());
+        top.add(chartTimeStepCombo);
+        initializeChartSelector();
+
+        JTextArea hint = new JTextArea("This chart updates automatically after each scenario run. Use the dropdown to view population, births, total deaths, and deaths by cause.");
+        hint.setEditable(false);
+        hint.setLineWrap(true);
+        hint.setWrapStyleWord(true);
+        hint.setOpaque(false);
+
+        panel.add(top, BorderLayout.NORTH);
+        panel.add(populationChartPanel, BorderLayout.CENTER);
+        panel.add(hint, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private void initializeChartSelector() {
+        ChartTimeStep ts = getSelectedChartTimeStep();
+        chartSeriesByKey.clear();
+        chartSelectorCombo.removeAllItems();
+
+        chartSeriesByKey.put("Population", new ChartSeriesData("Population", List.of(), List.of(), "No data", ts.axisSuffix, ts.tooltipLabel));
+        chartSeriesByKey.put("Births", new ChartSeriesData("Births", List.of(), List.of(), "No data", ts.axisSuffix, ts.tooltipLabel));
+        chartSeriesByKey.put("Deaths (total)", new ChartSeriesData("Deaths (total)", List.of(), List.of(), "No data", ts.axisSuffix, ts.tooltipLabel));
+        for (DeathCause cause : DeathCause.values()) {
+            String key = "Deaths (" + formatDeathCauseLabel(cause) + ")";
+            chartSeriesByKey.put(key, new ChartSeriesData(key, List.of(), List.of(), "No data", ts.axisSuffix, ts.tooltipLabel));
+        }
+
+        for (String key : chartSeriesByKey.keySet()) {
+            chartSelectorCombo.addItem(key);
+        }
+        if (chartSelectorCombo.getItemCount() > 0) {
+            chartSelectorCombo.setSelectedIndex(0);
+        }
+        refreshSelectedChart();
+    }
+
+    private static String formatDeathCauseLabel(DeathCause cause) {
+        String[] parts = cause.name().toLowerCase(Locale.ROOT).split("_");
+        StringBuilder sb = new StringBuilder();
+        for (String p : parts) {
+            if (p.isEmpty()) continue;
+            if (!sb.isEmpty()) sb.append(' ');
+            sb.append(Character.toUpperCase(p.charAt(0)));
+            if (p.length() > 1) sb.append(p.substring(1));
+        }
+        return sb.toString();
+    }
+
+    private void refreshSelectedChart() {
+        String selected = (String) chartSelectorCombo.getSelectedItem();
+        ChartTimeStep ts = getSelectedChartTimeStep();
+        if (selected == null) {
+            populationChartPanel.setBorder(BorderFactory.createTitledBorder("Chart"));
+            populationChartPanel.setSeries(List.of(), List.of(), "No data", ts.axisSuffix, ts.tooltipLabel);
+            return;
+        }
+        ChartSeriesData data = chartSeriesByKey.get(selected);
+        if (data == null) {
+            populationChartPanel.setBorder(BorderFactory.createTitledBorder(selected));
+            populationChartPanel.setSeries(List.of(), List.of(), "No data", ts.axisSuffix, ts.tooltipLabel);
+            return;
+        }
+        populationChartPanel.setBorder(BorderFactory.createTitledBorder(data.title));
+        populationChartPanel.setSeries(data.xValues, data.yValues, data.subtitle, data.xAxisSuffix, data.xTooltipLabel);
+    }
+
+    private ChartTimeStep getSelectedChartTimeStep() {
+        ChartTimeStep selected = (ChartTimeStep) chartTimeStepCombo.getSelectedItem();
+        return selected != null ? selected : ChartTimeStep.YEAR;
+    }
+
+    private void refreshChartsForSelectedTimeStep() {
+        if (lastChartOutcome != null && !lastChartOutcome.runResults.isEmpty()) {
+            updateCharts(lastChartOutcome);
+        } else {
+            initializeChartSelector();
+        }
+    }
+
+    private JPanel buildProgressPanel() {
+        JPanel panel = new JPanel(new BorderLayout(6, 6));
+        panel.setBorder(BorderFactory.createTitledBorder("Run progress"));
+
+        runProgressBar.setStringPainted(true);
+        runProgressBar.setValue(0);
+        runProgressBar.setString("0 / 0 replicates");
+
+        JPanel metrics = new JPanel(new GridLayout(0, 4, 8, 4));
+        metrics.add(new JLabel("State"));
+        metrics.add(progressStateValueLabel);
+        metrics.add(new JLabel("Replicate"));
+        metrics.add(progressReplicateValueLabel);
+        metrics.add(new JLabel("Estimated completion"));
+        metrics.add(progressEtaValueLabel);
+        metrics.add(new JLabel("Elapsed"));
+        metrics.add(progressElapsedValueLabel);
+
+        panel.add(runProgressBar, BorderLayout.NORTH);
+        panel.add(metrics, BorderLayout.CENTER);
         return panel;
     }
 
@@ -221,7 +381,7 @@ public final class BatchRunnerUI extends JFrame {
         JButton loadButton = new JButton("Load map preview");
         loadButton.addActionListener(e -> loadMapPreview());
 
-        top.add(new JLabel("Map file"), BorderLayout.WEST);
+        top.add(new JLabel("Generated simulation map"), BorderLayout.WEST);
         top.add(previewMapPathField, BorderLayout.CENTER);
         top.add(loadButton, BorderLayout.EAST);
 
@@ -262,12 +422,22 @@ public final class BatchRunnerUI extends JFrame {
 
     private void addOverride() {
         Object field = overrideFieldCombo.getSelectedItem();
+        String year = overrideYearField.getText().trim();
         String value = overrideValueField.getText().trim();
         if (field == null || value.isEmpty()) {
             showError("Choose a Settings field and enter a value.");
             return;
         }
-        overridesModel.addRow(new Object[]{field.toString(), value});
+        if (!year.isEmpty()) {
+            try {
+                Double.parseDouble(year);
+            } catch (NumberFormatException nfe) {
+                showError("Year must be numeric (e.g. 10 or 12.5), or blank for static override.");
+                return;
+            }
+        }
+        overridesModel.addRow(new Object[]{year, field.toString(), value});
+        overrideYearField.setText("");
         overrideValueField.setText("");
     }
 
@@ -284,7 +454,6 @@ public final class BatchRunnerUI extends JFrame {
         if (result == JFileChooser.APPROVE_OPTION) {
             String selected = chooser.getSelectedFile().toPath().toString();
             mapSourceField.setText(selected);
-            previewMapPathField.setText(selected);
         }
     }
 
@@ -308,10 +477,14 @@ public final class BatchRunnerUI extends JFrame {
             props.setProperty("outputDir", outputDirField.getText().trim());
 
             for (int i = 0; i < overridesModel.getRowCount(); i++) {
-                String key = Objects.toString(overridesModel.getValueAt(i, 0), "").trim();
-                String value = Objects.toString(overridesModel.getValueAt(i, 1), "").trim();
-                if (!key.isEmpty() && !value.isEmpty()) {
-                    props.setProperty("override." + key, value);
+                String year = Objects.toString(overridesModel.getValueAt(i, 0), "").trim();
+                String field = Objects.toString(overridesModel.getValueAt(i, 1), "").trim();
+                String value = Objects.toString(overridesModel.getValueAt(i, 2), "").trim();
+                if (!field.isEmpty() && !value.isEmpty()) {
+                    String p = "override." + i + ".";
+                    props.setProperty(p + "year", year);
+                    props.setProperty(p + "field", field);
+                    props.setProperty(p + "value", value);
                 }
             }
 
@@ -352,12 +525,35 @@ public final class BatchRunnerUI extends JFrame {
             scheduleField.setText(props.getProperty("schedule", scheduleField.getText()));
             referenceField.setText(props.getProperty("reference", referenceField.getText()));
             outputDirField.setText(props.getProperty("outputDir", outputDirField.getText()));
-            previewMapPathField.setText(mapSourceField.getText().trim());
 
             overridesModel.setRowCount(0);
+            Map<Integer, String> idxYear = new TreeMap<>();
+            Map<Integer, String> idxField = new TreeMap<>();
+            Map<Integer, String> idxValue = new TreeMap<>();
             for (String name : props.stringPropertyNames()) {
                 if (name.startsWith("override.")) {
-                    overridesModel.addRow(new Object[]{name.substring("override.".length()), props.getProperty(name)});
+                    String rest = name.substring("override.".length());
+                    String[] parts = rest.split("\\.", 2);
+                    if (parts.length == 2 && parts[0].matches("\\d+")) {
+                        int idx = Integer.parseInt(parts[0]);
+                        switch (parts[1]) {
+                            case "year" -> idxYear.put(idx, props.getProperty(name, ""));
+                            case "field" -> idxField.put(idx, props.getProperty(name, ""));
+                            case "value" -> idxValue.put(idx, props.getProperty(name, ""));
+                            default -> {
+                            }
+                        }
+                    } else {
+                        // Backward compatibility: old format override.<FIELD>=<VALUE> means static override.
+                        overridesModel.addRow(new Object[]{"", rest, props.getProperty(name)});
+                    }
+                }
+            }
+            for (Integer idx : idxField.keySet()) {
+                String field = idxField.get(idx);
+                String value = idxValue.getOrDefault(idx, "");
+                if (field != null && !field.isBlank() && !value.isBlank()) {
+                    overridesModel.addRow(new Object[]{idxYear.getOrDefault(idx, ""), field, value});
                 }
             }
 
@@ -368,6 +564,11 @@ public final class BatchRunnerUI extends JFrame {
     }
 
     private void runScenario() {
+        if (currentRunWorker != null && !currentRunWorker.isDone()) {
+            showError("A scenario is already running. Use Force stop first.");
+            return;
+        }
+
         final String scenarioId = scenarioIdField.getText().trim();
         if (scenarioId.isEmpty()) {
             showError("Scenario id cannot be empty.");
@@ -394,24 +595,66 @@ public final class BatchRunnerUI extends JFrame {
         final String schedulePath = scheduleField.getText().trim();
         final String referencePath = referenceField.getText().trim();
         final String outputDir = outputDirField.getText().trim();
+        final String preparedMapSource;
+
+        try {
+            preparedMapSource = prepareMapSourceForRun(mapSource, mapLength);
+            if (preparedMapSource == null) {
+                appendLog("Run canceled.");
+                return;
+            }
+        } catch (Exception ex) {
+            showError("Failed to prepare map: " + ex.getMessage());
+            return;
+        }
 
         final Map<String, String> overrides = new LinkedHashMap<>();
+        final List<ParameterSchedule.Entry> uiScheduleEntries = new ArrayList<>();
         for (int i = 0; i < overridesModel.getRowCount(); i++) {
-            String key = Objects.toString(overridesModel.getValueAt(i, 0), "").trim();
-            String value = Objects.toString(overridesModel.getValueAt(i, 1), "").trim();
-            if (!key.isEmpty() && !value.isEmpty()) {
+            String yearRaw = Objects.toString(overridesModel.getValueAt(i, 0), "").trim();
+            String key = Objects.toString(overridesModel.getValueAt(i, 1), "").trim();
+            String value = Objects.toString(overridesModel.getValueAt(i, 2), "").trim();
+            if (key.isEmpty() || value.isEmpty()) {
+                continue;
+            }
+            if (yearRaw.isEmpty()) {
                 overrides.put(key, value);
+            } else {
+                try {
+                    double year = Double.parseDouble(yearRaw);
+                    uiScheduleEntries.add(new ParameterSchedule.Entry(year, key, value));
+                } catch (NumberFormatException nfe) {
+                    showError("Invalid year in overrides table: '" + yearRaw + "' at row " + (i + 1));
+                    return;
+                }
             }
         }
 
         appendLog("Starting scenario run: " + scenarioId + " (replicates=" + replicates + ", years=" + years + ")");
+        Settings.STOP_REQUESTED = false;
+        progressTracker = new RunProgressTracker(replicates);
+        progressTracker.setState("Preparing");
+        refreshProgressUi();
+        runScenarioButton.setEnabled(false);
+        stopScenarioButton.setEnabled(true);
 
-        SwingWorker<Void, String> worker = new SwingWorker<>() {
+        SwingWorker<BatchRunner.BatchOutcome, String> worker = new SwingWorker<>() {
             @Override
-            protected Void doInBackground() throws Exception {
+            protected BatchRunner.BatchOutcome doInBackground() throws Exception {
                 long maxTicks = (long) Math.ceil(years / Settings.ONE_TICK_IN_YEARS);
                 NavigableMap<Integer, Double> reference = loadReferenceSeries(referencePath);
                 ParameterSchedule schedule = loadSchedule(schedulePath);
+                if (!uiScheduleEntries.isEmpty()) {
+                    List<ParameterSchedule.Entry> merged = new ArrayList<>(schedule.entries());
+                    merged.addAll(uiScheduleEntries);
+                    String src = schedule.sourceDescription();
+                    if (src == null || src.isBlank()) {
+                        src = "ui-overrides";
+                    } else {
+                        src = src + ";ui-overrides";
+                    }
+                    schedule = new ParameterSchedule(merged, src);
+                }
 
                 Scenario scenario = new Scenario(
                         scenarioId,
@@ -423,35 +666,580 @@ public final class BatchRunnerUI extends JFrame {
                         overrides,
                         reference,
                         schedule,
-                        mapSource
+                        preparedMapSource
                 );
 
                 PrintStream originalOut = System.out;
                 PrintStream originalErr = System.err;
-                try (PrintStream tee = new PrintStream(new TeeOutputStream(originalOut, new SwingTextAreaStream(logArea)), true, StandardCharsets.UTF_8)) {
+                try (PrintStream tee = new PrintStream(
+                        new TeeOutputStream(originalOut, new SwingTextAreaStream(logArea, BatchRunnerUI.this::handleRunnerLogLine)),
+                        true,
+                        StandardCharsets.UTF_8)) {
                     System.setOut(tee);
                     System.setErr(tee);
-                    BatchRunner.runScenarios(List.of(scenario), resolvePath(outputDir));
+                    return BatchRunner.runScenarios(List.of(scenario), resolvePath(outputDir));
                 } finally {
                     System.setOut(originalOut);
                     System.setErr(originalErr);
                 }
-                return null;
             }
 
             @Override
             protected void done() {
                 try {
-                    get();
-                    appendLog("Run finished successfully.");
+                    BatchRunner.BatchOutcome outcome = get();
+                    if (progressTracker != null) {
+                        progressTracker.setState(Settings.STOP_REQUESTED ? "Stopped" : "Completed");
+                    }
+                    refreshProgressUi();
+                    updateCharts(outcome);
+                    if (Settings.STOP_REQUESTED) {
+                        appendLog("Run stopped by user.");
+                    } else {
+                        appendLog("Run finished successfully.");
+                    }
                 } catch (Exception ex) {
-                    appendLog("Run failed: " + ex.getMessage());
-                    showError("Run failed: " + ex.getMessage());
+                    if (progressTracker != null) {
+                        progressTracker.setState(Settings.STOP_REQUESTED ? "Stopped" : "Failed");
+                    }
+                    refreshProgressUi();
+                    initializeChartSelector();
+                    if (Settings.STOP_REQUESTED) {
+                        appendLog("Run stopped by user.");
+                    } else {
+                        appendLog("Run failed: " + ex.getMessage());
+                        showError("Run failed: " + ex.getMessage());
+                    }
+                } finally {
+                    currentRunWorker = null;
+                    runScenarioButton.setEnabled(true);
+                    stopScenarioButton.setEnabled(false);
+                    Settings.STOP_REQUESTED = false;
                 }
             }
         };
 
+        currentRunWorker = worker;
         worker.execute();
+    }
+
+    private String prepareMapSourceForRun(String rawMapSource, int targetMapLength) throws IOException {
+        if (rawMapSource == null || rawMapSource.isBlank()) {
+            return rawMapSource;
+        }
+        if (targetMapLength <= 0) {
+            throw new IllegalArgumentException("Map length must be positive.");
+        }
+
+        Path sourcePath = resolvePath(rawMapSource);
+        if (!Files.exists(sourcePath)) {
+            throw new IllegalArgumentException("Source map not found: " + sourcePath);
+        }
+
+        boolean rasterSource = isRasterMapSource(sourcePath);
+        if (!rasterSource) {
+            MapGridLoader.Grid sourceGrid = MapGridLoader.load(sourcePath);
+            int sourceLength = sourceGrid.mapLength();
+            if (sourceLength == targetMapLength) {
+                return sourcePath.toString();
+            }
+        }
+
+        Path generatedPath = deriveGeneratedMapPath(sourcePath, targetMapLength);
+        boolean regenerate = true;
+        if (Files.exists(generatedPath)) {
+            int choice = JOptionPane.showConfirmDialog(
+                    this,
+                        "Generated simulation map already exists:\n" + generatedPath.toAbsolutePath()
+                            + "\n\nRegenerate it from source raster map?",
+                        "Generated simulation map exists",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+            );
+            if (choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION) {
+                return null;
+            }
+            regenerate = choice == JOptionPane.YES_OPTION;
+        }
+
+        if (regenerate) {
+            if (rasterSource) {
+                runBuildRomaniaMapScript(sourcePath, targetMapLength, generatedPath);
+                appendLog("Generated simulation map with build_romania_map.py: " + generatedPath.toAbsolutePath());
+            } else {
+                MapGridLoader.Grid sourceGrid = MapGridLoader.load(sourcePath);
+                int sourceLength = sourceGrid.mapLength();
+                BearCellType[][] resizedCells = resizeGrid(sourceGrid.cells, sourceGrid.width, sourceGrid.height, targetMapLength);
+                writeGeneratedMap(generatedPath, resizedCells, targetMapLength, sourcePath, sourceLength);
+                appendLog("Generated simulation map: " + generatedPath.toAbsolutePath()
+                        + " (" + sourceLength + " -> " + targetMapLength + ")");
+            }
+        } else {
+            appendLog("Using existing generated simulation map: " + generatedPath.toAbsolutePath());
+        }
+
+        String generatedPathText = generatedPath.toString();
+        previewMapPathField.setText(generatedPathText);
+        return generatedPathText;
+    }
+
+    private static boolean isRasterMapSource(Path sourcePath) {
+        String name = sourcePath.getFileName() == null ? "" : sourcePath.getFileName().toString().toLowerCase(Locale.ROOT);
+        return name.endsWith(".tif") || name.endsWith(".tiff");
+    }
+
+    private void runBuildRomaniaMapScript(Path clcPath, int gridSize, Path outPath) throws IOException {
+        Path scriptPath = resolvePath("tools/build_romania_map.py");
+        if (!Files.exists(scriptPath)) {
+            throw new IllegalArgumentException("Map build script not found: " + scriptPath);
+        }
+
+        List<String> baseArgs = new ArrayList<>();
+        baseArgs.add(scriptPath.toString());
+        baseArgs.add("--clc");
+        baseArgs.add(clcPath.toString());
+        Path defaultMask = resolvePath(DEFAULT_MASK_PATH.toString());
+        if (Files.exists(defaultMask)) {
+            baseArgs.add("--mask");
+            baseArgs.add(defaultMask.toString());
+        }
+        baseArgs.add("--grid-size");
+        baseArgs.add(String.valueOf(gridSize));
+        baseArgs.add("--out");
+        baseArgs.add(outPath.toString());
+
+        IOException lastIo = null;
+        RuntimeException lastRuntime = null;
+        for (String interpreter : List.of("python", "py")) {
+            try {
+                List<String> cmd = new ArrayList<>();
+                cmd.add(interpreter);
+                cmd.addAll(baseArgs);
+                appendLog("Generating map via " + interpreter + " " + scriptPath + " ...");
+                runExternalProcess(cmd);
+                return;
+            } catch (IOException io) {
+                lastIo = io;
+            } catch (RuntimeException rt) {
+                lastRuntime = rt;
+            }
+        }
+
+        if (lastRuntime != null) {
+            throw new IOException(lastRuntime.getMessage(), lastRuntime);
+        }
+        if (lastIo != null) {
+            throw lastIo;
+        }
+        throw new IOException("Failed to start map generation process.");
+    }
+
+    private static void runExternalProcess(List<String> command) throws IOException {
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.directory(Paths.get("").toAbsolutePath().toFile());
+        pb.redirectErrorStream(true);
+
+        Process process = pb.start();
+        StringBuilder output = new StringBuilder();
+        try (BufferedReader reader = process.inputReader(StandardCharsets.UTF_8)) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append(System.lineSeparator());
+            }
+        }
+
+        int exitCode;
+        try {
+            exitCode = process.waitFor();
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Map generation process was interrupted.", ie);
+        }
+
+        if (exitCode != 0) {
+            String text = output.toString().trim();
+            if (text.length() > 1200) {
+                text = text.substring(text.length() - 1200);
+            }
+            throw new RuntimeException("Map generation failed (exit " + exitCode + "):\n" + text);
+        }
+    }
+
+    private static Path deriveGeneratedMapPath(Path sourcePath, int targetMapLength) {
+        String sourceName = sourcePath.getFileName() == null ? "map" : sourcePath.getFileName().toString();
+        int dot = sourceName.lastIndexOf('.');
+        String stem = dot > 0 ? sourceName.substring(0, dot) : sourceName;
+        String sanitizedStem = stem.replaceAll("[^A-Za-z0-9._-]", "_");
+        String generatedName = sanitizedStem + "-" + targetMapLength + "x" + targetMapLength + ".txt";
+        return Paths.get("reference-data", "generated-maps", generatedName);
+    }
+
+    private static BearCellType[][] resizeGrid(BearCellType[][] sourceCells, int sourceWidth, int sourceHeight, int targetLength) {
+        BearCellType[][] resized = new BearCellType[targetLength][targetLength];
+        BearCellType[] tieBreakPriority = new BearCellType[]{
+                BearCellType.FOREST,
+                BearCellType.FIELD,
+                BearCellType.MOUNTAIN,
+                BearCellType.VILLAGE,
+                BearCellType.ROAD,
+                BearCellType.NONE
+        };
+
+        for (int ty = 0; ty < targetLength; ty++) {
+            int yStart = (int) Math.floor((double) ty * sourceHeight / targetLength);
+            int yEnd = (int) Math.floor((double) (ty + 1) * sourceHeight / targetLength) - 1;
+            if (yEnd < yStart) {
+                yEnd = yStart;
+            }
+            yStart = Math.max(0, Math.min(sourceHeight - 1, yStart));
+            yEnd = Math.max(0, Math.min(sourceHeight - 1, yEnd));
+
+            for (int tx = 0; tx < targetLength; tx++) {
+                int xStart = (int) Math.floor((double) tx * sourceWidth / targetLength);
+                int xEnd = (int) Math.floor((double) (tx + 1) * sourceWidth / targetLength) - 1;
+                if (xEnd < xStart) {
+                    xEnd = xStart;
+                }
+                xStart = Math.max(0, Math.min(sourceWidth - 1, xStart));
+                xEnd = Math.max(0, Math.min(sourceWidth - 1, xEnd));
+
+                EnumMap<BearCellType, Integer> counts = new EnumMap<>(BearCellType.class);
+                for (int y = yStart; y <= yEnd; y++) {
+                    for (int x = xStart; x <= xEnd; x++) {
+                        BearCellType cell = sourceCells[x][y];
+                        counts.merge(cell, 1, Integer::sum);
+                    }
+                }
+
+                BearCellType chosen = BearCellType.NONE;
+                int bestCount = -1;
+                for (BearCellType candidate : tieBreakPriority) {
+                    int count = counts.getOrDefault(candidate, 0);
+                    if (count > bestCount) {
+                        bestCount = count;
+                        chosen = candidate;
+                    }
+                }
+                resized[tx][ty] = chosen;
+            }
+        }
+        return resized;
+    }
+
+    private static void writeGeneratedMap(Path path,
+                                          BearCellType[][] cells,
+                                          int mapLength,
+                                          Path sourcePath,
+                                          int sourceLength) throws IOException {
+        Path parent = path.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+
+        List<String> lines = new ArrayList<>(mapLength + 8);
+        lines.add("# Auto-generated simulation map.");
+        lines.add("# generatedBy=BatchRunnerUI");
+        lines.add("# sourceMap=" + sourcePath.toAbsolutePath());
+        lines.add("# sourceSize=" + sourceLength);
+        lines.add("# targetSize=" + mapLength);
+        lines.add("width=" + mapLength);
+        lines.add("height=" + mapLength);
+
+        for (int y = 0; y < mapLength; y++) {
+            StringBuilder row = new StringBuilder(mapLength);
+            for (int x = 0; x < mapLength; x++) {
+                BearCellType cell = cells[x][y];
+                char c = cell == BearCellType.NONE ? 'N' : cell.mapSymbol();
+                row.append(c);
+            }
+            lines.add(row.toString());
+        }
+
+        Files.write(path, lines, StandardCharsets.UTF_8);
+    }
+
+    private void forceStopCurrentScenario() {
+        if (currentRunWorker == null || currentRunWorker.isDone()) {
+            appendLog("No active scenario run to stop.");
+            return;
+        }
+        Settings.STOP_REQUESTED = true;
+        if (progressTracker != null) {
+            progressTracker.setState("Stopping (force)");
+        }
+        refreshProgressUi();
+        currentRunWorker.cancel(true);
+        appendLog("Force stop requested. Waiting for current simulation loop to exit...");
+    }
+
+    private void updateCharts(BatchRunner.BatchOutcome outcome) {
+        lastChartOutcome = outcome;
+        if (outcome == null || outcome.runResults.isEmpty()) {
+            initializeChartSelector();
+            return;
+        }
+
+        ChartTimeStep timeStep = getSelectedChartTimeStep();
+
+        // Aggregate per tick across replicates: each metric stores mean value per sampled tick.
+        Map<Long, double[]> byTickPopulation = new TreeMap<>(); // [sum, count, year]
+        Map<Long, double[]> byTickBirths = new TreeMap<>(); // [sum, count, year]
+        Map<Long, double[]> byTickDeathsTotal = new TreeMap<>(); // [sum, count, year]
+        Map<DeathCause, Map<Long, double[]>> byTickDeathsByCause = new LinkedHashMap<>();
+        for (DeathCause cause : DeathCause.values()) {
+            byTickDeathsByCause.put(cause, new TreeMap<>());
+        }
+
+        for (BatchRunner.RunResult rr : outcome.runResults) {
+            for (TickMetrics s : rr.recorder.samples()) {
+                aggregateTickValue(byTickPopulation, s.tick, s.simulationYear, s.population);
+                aggregateTickValue(byTickBirths, s.tick, s.simulationYear, s.births);
+                aggregateTickValue(byTickDeathsTotal, s.tick, s.simulationYear, s.deathsTotal);
+
+                for (DeathCause cause : DeathCause.values()) {
+                    int value = s.deathsByCause.getOrDefault(cause, 0);
+                    aggregateTickValue(byTickDeathsByCause.get(cause), s.tick, s.simulationYear, value);
+                }
+            }
+        }
+
+        int replicateCount = outcome.runResults.size();
+        String replicateSuffix = replicateCount == 1 ? "" : "s";
+        String perLabel = timeStep.perLabel;
+
+        chartSeriesByKey.clear();
+        chartSeriesByKey.put("Population", buildSeriesData(
+                "Population over time",
+                byTickPopulation,
+                String.format(Locale.ROOT, "Mean population (%d replicate%s, %s)", replicateCount, replicateSuffix, perLabel),
+            ChartAggregation.MEAN,
+                timeStep
+        ));
+        chartSeriesByKey.put("Births", buildSeriesData(
+                "Births over time",
+                byTickBirths,
+            String.format(Locale.ROOT, "Total births per %s (%d replicate%s)",
+                perLabel, replicateCount, replicateSuffix),
+            ChartAggregation.SUM,
+                timeStep
+        ));
+        chartSeriesByKey.put("Deaths (total)", buildSeriesData(
+                "Total deaths over time",
+                byTickDeathsTotal,
+            String.format(Locale.ROOT, "Total deaths per %s (%d replicate%s)",
+                perLabel, replicateCount, replicateSuffix),
+            ChartAggregation.SUM,
+                timeStep
+        ));
+        for (DeathCause cause : DeathCause.values()) {
+            String key = "Deaths (" + formatDeathCauseLabel(cause) + ")";
+            chartSeriesByKey.put(key, buildSeriesData(
+                    key + " over time",
+                    byTickDeathsByCause.get(cause),
+                String.format(Locale.ROOT, "Total deaths per %s (%s, %d replicate%s)",
+                    perLabel, formatDeathCauseLabel(cause), replicateCount, replicateSuffix),
+                ChartAggregation.SUM,
+                    timeStep
+            ));
+        }
+
+        String selected = (String) chartSelectorCombo.getSelectedItem();
+        chartSelectorCombo.removeAllItems();
+        for (String key : chartSeriesByKey.keySet()) {
+            chartSelectorCombo.addItem(key);
+        }
+        if (selected != null && chartSeriesByKey.containsKey(selected)) {
+            chartSelectorCombo.setSelectedItem(selected);
+        } else if (chartSelectorCombo.getItemCount() > 0) {
+            chartSelectorCombo.setSelectedIndex(0);
+        }
+        refreshSelectedChart();
+    }
+
+    private static void aggregateTickValue(Map<Long, double[]> byTick, long tick, double simulationYear, double value) {
+        double[] agg = byTick.computeIfAbsent(tick, k -> new double[]{0.0, 0.0, simulationYear});
+        agg[0] += value;
+        agg[1] += 1.0;
+        agg[2] = simulationYear;
+    }
+
+    private static ChartSeriesData buildSeriesData(String title,
+                                                   Map<Long, double[]> byTick,
+                                                   String subtitle,
+                                                   ChartAggregation aggregation,
+                                                   ChartTimeStep timeStep) {
+        Map<Long, double[]> rebinned = rebinByTimeStep(byTick, timeStep);
+        List<Double> xValues = new ArrayList<>(rebinned.size());
+        List<Double> yValues = new ArrayList<>(rebinned.size());
+        for (double[] agg : rebinned.values()) {
+            xValues.add(agg[2]);
+            double v;
+            if (aggregation == ChartAggregation.SUM) {
+                v = agg[0];
+            } else {
+                v = agg[1] > 0 ? (agg[0] / agg[1]) : 0.0;
+            }
+            yValues.add(v);
+        }
+        return new ChartSeriesData(title, xValues, yValues, subtitle, timeStep.axisSuffix, timeStep.tooltipLabel);
+    }
+
+    private static Map<Long, double[]> rebinByTimeStep(Map<Long, double[]> byTick, ChartTimeStep timeStep) {
+        Map<Long, double[]> byBin = new TreeMap<>();
+        for (Map.Entry<Long, double[]> e : byTick.entrySet()) {
+            long tick = e.getKey();
+            double[] agg = e.getValue();
+            double value = agg[1] > 0 ? (agg[0] / agg[1]) : 0.0;
+            long bin = timeStep.toBin(tick, agg[2]);
+            double[] binAgg = byBin.computeIfAbsent(bin, k -> new double[]{0.0, 0.0, timeStep.toXValue(k)});
+            binAgg[0] += value;
+            binAgg[1] += 1.0;
+            binAgg[2] = timeStep.toXValue(bin);
+        }
+        return byBin;
+    }
+
+    private enum ChartAggregation {
+        MEAN,
+        SUM
+    }
+
+    private void handleRunnerLogLine(String rawLine) {
+        String line = rawLine == null ? "" : rawLine.trim();
+        if (line.isEmpty() || progressTracker == null) {
+            return;
+        }
+
+        if (line.startsWith("===== Scenario:")) {
+            progressTracker.setState("Preparing");
+            refreshProgressUi();
+            return;
+        }
+
+        if (line.startsWith("--- Run:")) {
+            Matcher m = RUN_REPLICATE_PATTERN.matcher(line);
+            if (m.find()) {
+                int replicateIndex = Integer.parseInt(m.group(1));
+                progressTracker.onReplicateStarted(replicateIndex);
+                refreshProgressUi();
+            }
+            return;
+        }
+
+        if (line.startsWith("mae=") || line.contains(" mae=")) {
+            progressTracker.onReplicateCompleted();
+            refreshProgressUi();
+            return;
+        }
+
+        if (line.startsWith("Batch written to:")) {
+            progressTracker.setState("Completed");
+            refreshProgressUi();
+        }
+    }
+
+    private void refreshProgressUi() {
+        RunProgressTracker tracker = progressTracker;
+        if (tracker == null) {
+            return;
+        }
+        RunProgressSnapshot snapshot = tracker.snapshot();
+        SwingUtilities.invokeLater(() -> {
+            runProgressBar.setMaximum(Math.max(1, snapshot.totalReplicates));
+            runProgressBar.setValue(Math.min(snapshot.completedReplicates, snapshot.totalReplicates));
+            runProgressBar.setString(snapshot.completedReplicates + " / " + snapshot.totalReplicates + " replicates");
+            progressStateValueLabel.setText(snapshot.state);
+            progressReplicateValueLabel.setText(snapshot.replicateLabel);
+            progressEtaValueLabel.setText(snapshot.etaLabel);
+            progressElapsedValueLabel.setText(snapshot.elapsedLabel);
+        });
+    }
+
+    private static String formatDuration(long millis) {
+        long seconds = Math.max(0, millis / 1000L);
+        long h = seconds / 3600;
+        long m = (seconds % 3600) / 60;
+        long s = seconds % 60;
+        return String.format(Locale.ROOT, "%02d:%02d:%02d", h, m, s);
+    }
+
+    private static final class ChartSeriesData {
+        final String title;
+        final List<Double> xValues;
+        final List<Double> yValues;
+        final String subtitle;
+        final String xAxisSuffix;
+        final String xTooltipLabel;
+
+        ChartSeriesData(String title,
+                        List<Double> xValues,
+                        List<Double> yValues,
+                        String subtitle,
+                        String xAxisSuffix,
+                        String xTooltipLabel) {
+            this.title = title;
+            this.xValues = xValues;
+            this.yValues = yValues;
+            this.subtitle = subtitle;
+            this.xAxisSuffix = xAxisSuffix;
+            this.xTooltipLabel = xTooltipLabel;
+        }
+    }
+
+    private enum ChartTimeStep {
+        TICK("Tick", "tick", "t", "Tick") {
+            @Override
+            long toBin(long tick, double simulationYear) {
+                return tick;
+            }
+        },
+        HOUR("Hour", "hour", "h", "Hour") {
+            @Override
+            long toBin(long tick, double simulationYear) {
+                return (long) Math.floor(simulationYear * 365.0 * 24.0);
+            }
+        },
+        DAY("Day", "day", "d", "Day") {
+            @Override
+            long toBin(long tick, double simulationYear) {
+                return (long) Math.floor(simulationYear * 365.0);
+            }
+        },
+        MONTH("Month", "month", "mo", "Month") {
+            @Override
+            long toBin(long tick, double simulationYear) {
+                return (long) Math.floor(simulationYear * 12.0);
+            }
+        },
+        YEAR("Year", "year", "y", "Year") {
+            @Override
+            long toBin(long tick, double simulationYear) {
+                return (long) Math.floor(simulationYear);
+            }
+        };
+
+        final String label;
+        final String perLabel;
+        final String axisSuffix;
+        final String tooltipLabel;
+
+        ChartTimeStep(String label, String perLabel, String axisSuffix, String tooltipLabel) {
+            this.label = label;
+            this.perLabel = perLabel;
+            this.axisSuffix = axisSuffix;
+            this.tooltipLabel = tooltipLabel;
+        }
+
+        abstract long toBin(long tick, double simulationYear);
+
+        double toXValue(long bin) {
+            return (double) bin;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
     }
 
     private void loadMapPreview() {
@@ -701,7 +1489,7 @@ public final class BatchRunnerUI extends JFrame {
 
                 if (mapImage == null) {
                     g2.setColor(Color.DARK_GRAY);
-                    g2.drawString("Load a map file to preview its terrain layout.", 20, 30);
+                    g2.drawString("Load a generated simulation map to preview its terrain layout.", 20, 30);
                     return;
                 }
 
@@ -724,12 +1512,231 @@ public final class BatchRunnerUI extends JFrame {
         }
     }
 
+    private static final class PopulationChartPanel extends JPanel {
+        private List<Double> xValues = List.of();
+        private List<Double> yPopulation = List.of();
+        private String subtitle = "Run a scenario to render the chart.";
+        private String xAxisSuffix = "y";
+        private String xTooltipLabel = "Year";
+        private int hoverIndex = -1;
+
+        PopulationChartPanel() {
+            setToolTipText(" ");
+            addMouseMotionListener(new MouseAdapter() {
+                @Override
+                public void mouseMoved(MouseEvent e) {
+                    int idx = findNearestIndex(e.getX(), e.getY());
+                    if (idx != hoverIndex) {
+                        hoverIndex = idx;
+                        repaint();
+                    }
+                }
+            });
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    if (hoverIndex != -1) {
+                        hoverIndex = -1;
+                        repaint();
+                    }
+                }
+            });
+        }
+
+        void setSeries(List<Double> xValues, List<Double> yPopulation, String subtitle, String xAxisSuffix, String xTooltipLabel) {
+            this.xValues = xValues == null ? List.of() : xValues;
+            this.yPopulation = yPopulation == null ? List.of() : yPopulation;
+            this.subtitle = subtitle == null ? "" : subtitle;
+            this.xAxisSuffix = (xAxisSuffix == null || xAxisSuffix.isBlank()) ? "" : xAxisSuffix;
+            this.xTooltipLabel = (xTooltipLabel == null || xTooltipLabel.isBlank()) ? "Time" : xTooltipLabel;
+            this.hoverIndex = -1;
+            repaint();
+        }
+
+        @Override
+        public String getToolTipText(MouseEvent event) {
+            int idx = findNearestIndex(event.getX(), event.getY());
+            if (idx < 0 || idx >= xValues.size() || idx >= yPopulation.size()) {
+                return null;
+            }
+            return String.format(Locale.ROOT, "%s: %s, Value: %s",
+                    xTooltipLabel,
+                    formatValue(xValues.get(idx), 2),
+                    formatValue(yPopulation.get(idx), 3));
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(248, 248, 248));
+                g2.fillRect(0, 0, getWidth(), getHeight());
+
+                ChartGeometry cg = buildGeometry();
+                Insets in = getInsets();
+
+                g2.setColor(Color.DARK_GRAY);
+                g2.drawString(subtitle, cg.left, in.top + 14);
+
+                g2.setColor(new Color(220, 220, 220));
+                g2.drawRect(cg.left, cg.top, cg.w, cg.h);
+
+                if (xValues.isEmpty() || yPopulation.isEmpty() || xValues.size() != yPopulation.size()) {
+                    g2.setColor(Color.GRAY);
+                    g2.drawString("No run data yet.", cg.left + 8, cg.top + 18);
+                    return;
+                }
+
+                g2.setColor(new Color(120, 120, 120));
+                g2.drawString(formatAxisValue(cg.maxY, cg.maxY - cg.minY), cg.left - 40, cg.top + 4);
+                g2.drawString(formatAxisValue(cg.minY, cg.maxY - cg.minY), cg.left - 40, cg.bottom + 4);
+                String minXText = formatValue(cg.minX, 1) + xAxisSuffix;
+                String maxXText = formatValue(cg.maxX, 1) + xAxisSuffix;
+                g2.drawString(minXText, cg.left, cg.bottom + 18);
+                g2.drawString(maxXText, cg.right - g2.getFontMetrics().stringWidth(maxXText), cg.bottom + 18);
+
+                g2.setColor(new Color(50, 120, 220));
+                g2.setStroke(new BasicStroke(2f));
+
+                int prevX = -1;
+                int prevY = -1;
+                for (int i = 0; i < xValues.size(); i++) {
+                    int px = toPixelX(cg, xValues.get(i));
+                    int py = toPixelY(cg, yPopulation.get(i));
+                    if (prevX >= 0) {
+                        g2.drawLine(prevX, prevY, px, py);
+                    }
+                    prevX = px;
+                    prevY = py;
+                }
+
+                if (hoverIndex >= 0 && hoverIndex < xValues.size() && hoverIndex < yPopulation.size()) {
+                    int hx = toPixelX(cg, xValues.get(hoverIndex));
+                    int hy = toPixelY(cg, yPopulation.get(hoverIndex));
+                    g2.setColor(new Color(30, 30, 30, 90));
+                    g2.setStroke(new BasicStroke(1f));
+                    g2.drawLine(hx, cg.top, hx, cg.bottom);
+                    g2.drawLine(cg.left, hy, cg.right, hy);
+                    g2.setColor(new Color(220, 70, 50));
+                    g2.fillOval(hx - 4, hy - 4, 8, 8);
+                }
+            } finally {
+                g2.dispose();
+            }
+        }
+
+        private int findNearestIndex(int mouseX, int mouseY) {
+            if (xValues.isEmpty() || yPopulation.isEmpty() || xValues.size() != yPopulation.size()) {
+                return -1;
+            }
+            ChartGeometry cg = buildGeometry();
+            if (mouseX < cg.left || mouseX > cg.right || mouseY < cg.top || mouseY > cg.bottom) {
+                return -1;
+            }
+            int bestIdx = -1;
+            int bestDx = Integer.MAX_VALUE;
+            for (int i = 0; i < xValues.size(); i++) {
+                int px = toPixelX(cg, xValues.get(i));
+                int dx = Math.abs(mouseX - px);
+                if (dx < bestDx) {
+                    bestDx = dx;
+                    bestIdx = i;
+                }
+            }
+            return bestIdx;
+        }
+
+        private int toPixelX(ChartGeometry cg, double year) {
+            double xNorm = (year - cg.minX) / (cg.maxX - cg.minX);
+            return cg.left + (int) Math.round(xNorm * cg.w);
+        }
+
+        private int toPixelY(ChartGeometry cg, double population) {
+            double yNorm = (population - cg.minY) / (cg.maxY - cg.minY);
+            return cg.bottom - (int) Math.round(yNorm * cg.h);
+        }
+
+        private ChartGeometry buildGeometry() {
+            Insets in = getInsets();
+            int left = in.left + 46;
+            int top = in.top + 24;
+            int right = getWidth() - in.right - 16;
+            int bottom = getHeight() - in.bottom - 34;
+            int w = Math.max(1, right - left);
+            int h = Math.max(1, bottom - top);
+
+            double minX = 0.0;
+            double maxX = 1.0;
+            double minY = 0.0;
+            double maxY = 1.0;
+            if (!xValues.isEmpty() && !yPopulation.isEmpty() && xValues.size() == yPopulation.size()) {
+                minX = xValues.get(0);
+                maxX = xValues.get(xValues.size() - 1);
+                minY = Double.POSITIVE_INFINITY;
+                maxY = Double.NEGATIVE_INFINITY;
+                for (double y : yPopulation) {
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+                }
+                if (maxX <= minX) maxX = minX + 1.0;
+                if (maxY <= minY) maxY = minY + 1.0;
+            }
+
+            return new ChartGeometry(left, top, right, bottom, w, h, minX, maxX, minY, maxY);
+        }
+
+        private static String formatAxisValue(double value, double range) {
+            if (range < 2.0) return formatValue(value, 2);
+            if (range < 20.0) return formatValue(value, 1);
+            return formatValue(value, 0);
+        }
+
+        private static String formatValue(double value, int decimals) {
+            return String.format(Locale.ROOT, "%1$." + decimals + "f", value);
+        }
+
+        private static final class ChartGeometry {
+            final int left;
+            final int top;
+            final int right;
+            final int bottom;
+            final int w;
+            final int h;
+            final double minX;
+            final double maxX;
+            final double minY;
+            final double maxY;
+
+            ChartGeometry(int left, int top, int right, int bottom, int w, int h,
+                          double minX, double maxX, double minY, double maxY) {
+                this.left = left;
+                this.top = top;
+                this.right = right;
+                this.bottom = bottom;
+                this.w = w;
+                this.h = h;
+                this.minX = minX;
+                this.maxX = maxX;
+                this.minY = minY;
+                this.maxY = maxY;
+            }
+        }
+    }
+
     private static final class SwingTextAreaStream extends OutputStream {
         private final JTextArea area;
+        private final Consumer<String> onLine;
         private final StringBuilder lineBuffer = new StringBuilder();
 
         SwingTextAreaStream(JTextArea area) {
+            this(area, null);
+        }
+
+        SwingTextAreaStream(JTextArea area, Consumer<String> onLine) {
             this.area = area;
+            this.onLine = onLine;
         }
 
         @Override
@@ -752,10 +1759,92 @@ public final class BatchRunnerUI extends JFrame {
             }
             final String text = lineBuffer.toString();
             lineBuffer.setLength(0);
+            if (onLine != null) {
+                onLine.accept(text);
+            }
             SwingUtilities.invokeLater(() -> {
                 area.append(text);
                 area.setCaretPosition(area.getDocument().getLength());
             });
+        }
+    }
+
+    private static final class RunProgressTracker {
+        private final int totalReplicates;
+        private final long runStartMs;
+        private String state = "Idle";
+        private int currentReplicateIndex = -1;
+        private long currentReplicateStartMs = -1L;
+        private final List<Long> completedReplicateDurationsMs = new ArrayList<>();
+
+        RunProgressTracker(int totalReplicates) {
+            this.totalReplicates = Math.max(1, totalReplicates);
+            this.runStartMs = System.currentTimeMillis();
+        }
+
+        synchronized void setState(String state) {
+            this.state = state;
+        }
+
+        synchronized void onReplicateStarted(int replicateIndex) {
+            this.currentReplicateIndex = replicateIndex;
+            this.currentReplicateStartMs = System.currentTimeMillis();
+            this.state = "Running replicate " + (replicateIndex + 1) + " of " + totalReplicates;
+        }
+
+        synchronized void onReplicateCompleted() {
+            if (currentReplicateStartMs > 0) {
+                completedReplicateDurationsMs.add(System.currentTimeMillis() - currentReplicateStartMs);
+                currentReplicateStartMs = -1L;
+            }
+            this.state = "Writing CSV";
+        }
+
+        synchronized RunProgressSnapshot snapshot() {
+            long now = System.currentTimeMillis();
+            int completed = Math.min(completedReplicateDurationsMs.size(), totalReplicates);
+            String replicateLabel;
+            if (currentReplicateIndex >= 0 && completed < totalReplicates && state.startsWith("Running replicate")) {
+                replicateLabel = (currentReplicateIndex + 1) + " / " + totalReplicates;
+            } else {
+                replicateLabel = completed + " / " + totalReplicates;
+            }
+
+            String elapsedLabel = formatDuration(Math.max(0, now - runStartMs));
+
+            String etaLabel = "N/A";
+            if (!completedReplicateDurationsMs.isEmpty()) {
+                long sum = 0L;
+                for (Long d : completedReplicateDurationsMs) {
+                    sum += d;
+                }
+                long avg = sum / completedReplicateDurationsMs.size();
+                int remaining = Math.max(0, totalReplicates - completed);
+                long etaMs = avg * (long) remaining;
+                LocalDateTime etaTime = LocalDateTime.now().plusSeconds(etaMs / 1000L);
+                etaLabel = formatDuration(etaMs) + " (around " + etaTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + ")";
+            }
+
+            return new RunProgressSnapshot(state, replicateLabel, etaLabel, elapsedLabel, completed, totalReplicates);
+        }
+    }
+
+    private static final class RunProgressSnapshot {
+        final String state;
+        final String replicateLabel;
+        final String etaLabel;
+        final String elapsedLabel;
+        final int completedReplicates;
+        final int totalReplicates;
+
+        RunProgressSnapshot(String state, String replicateLabel, String etaLabel, String elapsedLabel,
+                            int completedReplicates, int totalReplicates) {
+            this.state = state;
+            this.replicateLabel = replicateLabel;
+            this.etaLabel = etaLabel;
+            this.elapsedLabel = elapsedLabel;
+            this.completedReplicates = completedReplicates;
+            this.totalReplicates = totalReplicates;
         }
     }
 
