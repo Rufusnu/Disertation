@@ -7,6 +7,7 @@ import MASInterface.Settings;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -106,6 +107,8 @@ public final class BatchRunnerUI extends JFrame {
     private final PopulationChartPanel populationChartPanel = new PopulationChartPanel();
     private final JComboBox<String> chartSelectorCombo = new JComboBox<>();
     private final JComboBox<ChartTimeStep> chartTimeStepCombo = new JComboBox<>();
+    private final JCheckBox chartShowSeasonsCheckbox = new JCheckBox("Show seasons", true);
+    private final JCheckBox chartShowYearBoundariesCheckbox = new JCheckBox("Show year boundaries", true);
     private final Map<String, ChartSeriesData> chartSeriesByKey = new LinkedHashMap<>();
     private BatchRunner.BatchOutcome lastChartOutcome = null;
     private final JProgressBar runProgressBar = new JProgressBar(0, 1);
@@ -271,6 +274,10 @@ public final class BatchRunnerUI extends JFrame {
         }
         chartTimeStepCombo.addActionListener(e -> refreshChartsForSelectedTimeStep());
         top.add(chartTimeStepCombo);
+        chartShowSeasonsCheckbox.addActionListener(e -> populationChartPanel.repaint());
+        top.add(chartShowSeasonsCheckbox);
+        chartShowYearBoundariesCheckbox.addActionListener(e -> populationChartPanel.repaint());
+        top.add(chartShowYearBoundariesCheckbox);
         initializeChartSelector();
 
         JTextArea hint = new JTextArea("This chart updates automatically after each scenario run. Use the dropdown to view population, births, total deaths, and deaths by cause.");
@@ -325,16 +332,25 @@ public final class BatchRunnerUI extends JFrame {
         if (selected == null) {
             populationChartPanel.setBorder(BorderFactory.createTitledBorder("Chart"));
             populationChartPanel.setSeries(List.of(), List.of(), "No data", ts.axisSuffix, ts.tooltipLabel);
+            populationChartPanel.setChartTimeStep(ts);
+            populationChartPanel.setShowSeasons(chartShowSeasonsCheckbox.isSelected());
+            populationChartPanel.setShowYearBoundaries(chartShowYearBoundariesCheckbox.isSelected());
             return;
         }
         ChartSeriesData data = chartSeriesByKey.get(selected);
         if (data == null) {
             populationChartPanel.setBorder(BorderFactory.createTitledBorder(selected));
             populationChartPanel.setSeries(List.of(), List.of(), "No data", ts.axisSuffix, ts.tooltipLabel);
+            populationChartPanel.setChartTimeStep(ts);
+            populationChartPanel.setShowSeasons(chartShowSeasonsCheckbox.isSelected());
+            populationChartPanel.setShowYearBoundaries(chartShowYearBoundariesCheckbox.isSelected());
             return;
         }
         populationChartPanel.setBorder(BorderFactory.createTitledBorder(data.title));
         populationChartPanel.setSeries(data.xValues, data.yValues, data.subtitle, data.xAxisSuffix, data.xTooltipLabel);
+        populationChartPanel.setChartTimeStep(ts);
+        populationChartPanel.setShowSeasons(chartShowSeasonsCheckbox.isSelected());
+        populationChartPanel.setShowYearBoundaries(chartShowYearBoundariesCheckbox.isSelected());
     }
 
     private ChartTimeStep getSelectedChartTimeStep() {
@@ -343,6 +359,8 @@ public final class BatchRunnerUI extends JFrame {
     }
 
     private void refreshChartsForSelectedTimeStep() {
+        ChartTimeStep selected = (ChartTimeStep) chartTimeStepCombo.getSelectedItem();
+        populationChartPanel.setChartTimeStep(selected != null ? selected : ChartTimeStep.YEAR);
         if (lastChartOutcome != null && !lastChartOutcome.runResults.isEmpty()) {
             updateCharts(lastChartOutcome);
         } else {
@@ -417,6 +435,24 @@ public final class BatchRunnerUI extends JFrame {
         overrideFieldCombo.removeAllItems();
         for (String fieldName : SettingsTableModel.getStaticFieldNames()) {
             overrideFieldCombo.addItem(fieldName);
+        }
+        overrideFieldCombo.addActionListener(e -> syncOverrideValueWithSelectedField());
+        if (overrideFieldCombo.getItemCount() > 0) {
+            overrideFieldCombo.setSelectedIndex(0);
+            syncOverrideValueWithSelectedField();
+        }
+    }
+
+    private void syncOverrideValueWithSelectedField() {
+        Object selected = overrideFieldCombo.getSelectedItem();
+        if (selected == null) {
+            return;
+        }
+        try {
+            Field field = Settings.class.getField(selected.toString());
+            overrideValueField.setText(String.valueOf(field.get(null)));
+        } catch (NoSuchFieldException | IllegalAccessException ignored) {
+            // Keep the current value if the field cannot be resolved.
         }
     }
 
@@ -1519,6 +1555,9 @@ public final class BatchRunnerUI extends JFrame {
         private String xAxisSuffix = "y";
         private String xTooltipLabel = "Year";
         private int hoverIndex = -1;
+        private boolean showSeasons = true;
+        private boolean showYearBoundaries = true;
+        private ChartTimeStep currentTimeStep = ChartTimeStep.YEAR;
 
         PopulationChartPanel() {
             setToolTipText(" ");
@@ -1553,6 +1592,21 @@ public final class BatchRunnerUI extends JFrame {
             repaint();
         }
 
+        void setShowSeasons(boolean show) {
+            this.showSeasons = show;
+            repaint();
+        }
+
+        void setShowYearBoundaries(boolean show) {
+            this.showYearBoundaries = show;
+            repaint();
+        }
+
+        void setChartTimeStep(ChartTimeStep timeStep) {
+            this.currentTimeStep = timeStep != null ? timeStep : ChartTimeStep.YEAR;
+            repaint();
+        }
+
         @Override
         public String getToolTipText(MouseEvent event) {
             int idx = findNearestIndex(event.getX(), event.getY());
@@ -1582,6 +1636,9 @@ public final class BatchRunnerUI extends JFrame {
 
                 g2.setColor(new Color(220, 220, 220));
                 g2.drawRect(cg.left, cg.top, cg.w, cg.h);
+
+                drawSeasonBands(g2, cg);
+                drawYearBoundaries(g2, cg);
 
                 if (xValues.isEmpty() || yPopulation.isEmpty() || xValues.size() != yPopulation.size()) {
                     g2.setColor(Color.GRAY);
@@ -1685,6 +1742,115 @@ public final class BatchRunnerUI extends JFrame {
             }
 
             return new ChartGeometry(left, top, right, bottom, w, h, minX, maxX, minY, maxY);
+        }
+
+        private double convertXToYears(double xValue) {
+            if (currentTimeStep == null || xValues.isEmpty()) {
+                return xValue;
+            }
+            switch (currentTimeStep) {
+                case TICK:
+                    // Ticks per year is stored in simulation; assume 365 ticks/year for calendar alignment
+                    return xValue / 365.0;
+                case HOUR:
+                    // 365.25 days * 24 hours per year
+                    return xValue / (365.25 * 24.0);
+                case DAY:
+                    // 365.25 days per year
+                    return xValue / 365.25;
+                case MONTH:
+                    // 12 months per year
+                    return xValue / 12.0;
+                case YEAR:
+                default:
+                    return xValue;
+            }
+        }
+
+        private void drawSeasonBands(Graphics2D g2, ChartGeometry cg) {
+            if (!showSeasons || xValues.isEmpty()) {
+                return;
+            }
+            double minXOriginal = cg.minX;
+            double maxXOriginal = cg.maxX;
+            if (maxXOriginal <= minXOriginal) return;
+
+            // Convert chart bounds from current time step to years
+            double minXYears = convertXToYears(minXOriginal);
+            double maxXYears = convertXToYears(maxXOriginal);
+
+            Color[] seasonColors = {
+                new Color(100, 200, 100, 40),  // Spring - light green
+                new Color(255, 200, 100, 40),  // Summer - light orange
+                new Color(200, 100, 50, 40),   // Fall - light brown
+                new Color(100, 150, 200, 40)   // Winter - light blue
+            };
+
+            int startYear = (int) Math.floor(minXYears);
+            int endYear = (int) Math.ceil(maxXYears);
+            for (int year = startYear; year <= endYear; year++) {
+                for (int season = 0; season < 4; season++) {
+                    double seasonStartYears = year + (season * 0.25);
+                    double seasonEndYears = year + ((season + 1) * 0.25);
+                    if (seasonEndYears < minXYears || seasonStartYears > maxXYears) continue;
+
+                    seasonStartYears = Math.max(seasonStartYears, minXYears);
+                    seasonEndYears = Math.min(seasonEndYears, maxXYears);
+
+                    // Convert back to original time step for pixel calculation
+                    double seasonStartOriginal = convertYearsToX(seasonStartYears);
+                    double seasonEndOriginal = convertYearsToX(seasonEndYears);
+
+                    int px1 = toPixelX(cg, seasonStartOriginal);
+                    int px2 = toPixelX(cg, seasonEndOriginal);
+                    g2.setColor(seasonColors[season]);
+                    g2.fillRect(px1, cg.top, Math.max(1, px2 - px1), cg.h);
+                }
+            }
+        }
+
+        private double convertYearsToX(double yearValue) {
+            if (currentTimeStep == null) {
+                return yearValue;
+            }
+            switch (currentTimeStep) {
+                case TICK:
+                    return yearValue * 365.0;
+                case HOUR:
+                    return yearValue * (365.25 * 24.0);
+                case DAY:
+                    return yearValue * 365.25;
+                case MONTH:
+                    return yearValue * 12.0;
+                case YEAR:
+                default:
+                    return yearValue;
+            }
+        }
+
+        private void drawYearBoundaries(Graphics2D g2, ChartGeometry cg) {
+            if (!showYearBoundaries || xValues.isEmpty()) {
+                return;
+            }
+            double minXOriginal = cg.minX;
+            double maxXOriginal = cg.maxX;
+            if (maxXOriginal <= minXOriginal) return;
+
+            // Convert chart bounds from current time step to years
+            double minXYears = convertXToYears(minXOriginal);
+            double maxXYears = convertXToYears(maxXOriginal);
+
+            int startYear = (int) Math.floor(minXYears);
+            int endYear = (int) Math.ceil(maxXYears);
+            g2.setColor(new Color(100, 100, 100, 150));
+            g2.setStroke(new BasicStroke(1.5f));
+
+            for (int year = startYear; year <= endYear; year++) {
+                if (year < minXYears || year > maxXYears) continue;
+                double yearInOriginal = convertYearsToX(year);
+                int px = toPixelX(cg, yearInOriginal);
+                g2.drawLine(px, cg.top, px, cg.bottom);
+            }
         }
 
         private static String formatAxisValue(double value, double range) {
