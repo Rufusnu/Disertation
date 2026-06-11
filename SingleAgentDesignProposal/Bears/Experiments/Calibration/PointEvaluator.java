@@ -134,7 +134,8 @@ public final class PointEvaluator {
 
     private StationarityTargets.ReplicateSummary summarise(List<TickMetrics> samples) {
         if (samples.isEmpty()) {
-            return new StationarityTargets.ReplicateSummary(0, 0, true, 0, 0, 0, 0);
+            return new StationarityTargets.ReplicateSummary(0, 0, true, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0);
         }
 
         double burnIn = config.burnInYears;
@@ -151,6 +152,14 @@ public final class PointEvaluator {
         long deathStarv = 0;
         long deathDanger = 0;
         boolean extinct = false;
+        Double startPopInWindow = null;
+        double endPopInWindow = 0;
+        double peakPopInWindow = 0;
+
+        // Tail-window linear trend inputs.
+        double tailStartYear = Math.max(burnIn, evalEnd - 8.0);
+        double tailX = 0, tailY = 0, tailXX = 0, tailXY = 0, tailPopSum = 0;
+        int tailN = 0;
 
         for (TickMetrics s : samples) {
             if (s.population == 0 && s.simulationYear >= burnIn) extinct = true;
@@ -158,9 +167,23 @@ public final class PointEvaluator {
             popSum += s.population;
             popSqSum += (double) s.population * s.population;
             popN++;
+            if (startPopInWindow == null) startPopInWindow = (double) s.population;
+            endPopInWindow = s.population;
+            if (s.population > peakPopInWindow) peakPopInWindow = s.population;
             if (s.population > 0) {
                 satSum += s.meanSatiety;
                 satN++;
+            }
+
+            if (s.simulationYear >= tailStartYear) {
+                double x = s.simulationYear;
+                double y = s.population;
+                tailN++;
+                tailX += x;
+                tailY += y;
+                tailXX += x * x;
+                tailXY += x * y;
+                tailPopSum += y;
             }
             birthSum += s.births;
             deathOld += s.deathsByCause.getOrDefault(DeathCause.OLD_AGE, 0);
@@ -182,9 +205,25 @@ public final class PointEvaluator {
         long totalDeaths = deathOld + deathStarv + deathDanger;
         double starvShare = totalDeaths > 0 ? (double) deathStarv / totalDeaths : 0;
         double oldShare = totalDeaths > 0 ? (double) deathOld / totalDeaths : 0;
+        double startPop = startPopInWindow != null ? startPopInWindow : samples.get(0).population;
+        double endPop = popN > 0 ? endPopInWindow : samples.get(samples.size() - 1).population;
+        double endToMean = meanPop > 0 ? endPop / meanPop : 0;
+        double endToStart = startPop > 0 ? endPop / startPop : 0;
+
+        double tailSlope = 0;
+        if (tailN >= 2) {
+            double denom = (tailN * tailXX) - (tailX * tailX);
+            if (Math.abs(denom) > 1e-12) {
+                tailSlope = ((tailN * tailXY) - (tailX * tailY)) / denom;
+            }
+        }
+        double tailMeanPop = tailN > 0 ? tailPopSum / tailN : meanPop;
+        double tailSlopeRel = tailMeanPop > 0 ? tailSlope / tailMeanPop : 0;
+        double maxDrawdown = peakPopInWindow > 0 ? Math.max(0, (peakPopInWindow - endPop) / peakPopInWindow) : 0;
 
         return new StationarityTargets.ReplicateSummary(
-                meanPop, cv, extinct, perCapitaBirth, meanSat, starvShare, oldShare);
+            meanPop, cv, extinct, perCapitaBirth, meanSat, starvShare, oldShare,
+                startPop, endPop, endToMean, endToStart, tailSlopeRel, maxDrawdown);
     }
 
     private Map<String, Object> applyAll(CandidatePoint point, long maxTicks) {

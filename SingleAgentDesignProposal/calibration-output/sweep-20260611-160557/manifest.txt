@@ -1,0 +1,16 @@
+Phase-1 calibration manifest
+============================
+timestamp=2026-06-11T16:05:57.777594300
+lhsPoints=14
+refineTop=2
+nmIterations=10
+replicates=1
+initialBears=5800
+mapLength=1000
+mapSource=reference-data/generated-maps/U2018_CLC2018_V2020_20u1-1000x1000.txt
+burnInYears=10.0
+evalEndYears=35.0
+kTarget=6000.0
+seed=20260609
+ONE_TICK_IN_YEARS=1.140771E-4
+params=[CalibrationParam[settingsField=BEAR_SATIETY_DECAY_PER_TICK, min=3.0E-4, max=0.0015], CalibrationParam[settingsField=BEAR_HIBERNATION_SATIETY_DECAY_MULTIPLIER, min=0.15, max=0.55], CalibrationParam[settingsField=BEAR_LITTER_SIZE_MEAN, min=1.6, max=2.8], CalibrationParam[settingsField=BEAR_INFANT_MORTALITY_AT_BIRTH, min=0.15, max=0.45], CalibrationParam[settingsField=BEAR_DANGER_DEATH_RATE_PER_TICK, min=5.0E-6, max=4.0E-5], CalibrationParam[settingsField=BEAR_REPRODUCTION_COOLDOWN_YEARS, min=2.0, max=4.0]]

@@ -4,6 +4,8 @@ import Bears.Experiments.CsvWriter;
 import MASInterface.Settings;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
@@ -11,6 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -53,18 +56,20 @@ public final class CalibrationRunner {
         int refineTop       = intProp("calib.refineTop", 4);
         int nmIterations    = intProp("calib.nmIterations", 40);
         int replicates      = intProp("calib.replicates", 3);
-        int initialBears    = intProp("calib.initialBears", 2000);
-        int mapLength       = intProp("calib.mapLength", 200);
-        String mapSource    = strProp("calib.mapSource", "");
+        int initialBears    = intProp("calib.initialBears", 5800);
+        int mapLength       = intProp("calib.mapLength", 1000);
+        String mapSource    = strProp("calib.mapSource", "E:\\Github\\Disertation\\reference-data\\generated-maps\\U2018_CLC2018_V2020_20u1-1000x1000.txt");
         double burnIn       = dblProp("calib.burnInYears", 15.0);
         double evalEnd      = dblProp("calib.evalEndYears", 50.0);
-        double kTarget      = dblProp("calib.kTarget", 6000.0);
+        double kTarget      = dblProp("calib.kTarget", 5800.0);
         long seed           = longProp("calib.seed", 20260603L);
         boolean verbose     = boolProp("calib.verbose", false);
         Path outputRoot     = Paths.get(strProp("calib.output", args.length > 0 ? args[0] : "calibration-output"));
+        String resumeFrom   = strProp("calib.resumeFrom", "").trim();
 
         String stamp = LocalDateTime.now().format(TS);
-        Path outDir = outputRoot.resolve("sweep-" + stamp);
+        boolean resume = !resumeFrom.isBlank();
+        Path outDir = resume ? Paths.get(resumeFrom) : outputRoot.resolve("sweep-" + stamp);
         Path pointsCsv = outDir.resolve("points.csv");
         Path bestCsv = outDir.resolve("best.csv");
         Path convergenceCsv = outDir.resolve("convergence.csv");
@@ -75,7 +80,8 @@ public final class CalibrationRunner {
                 burnIn, evalEnd, seed, kTarget, verbose);
         PointEvaluator evaluator = new PointEvaluator(evalCfg);
 
-        writeManifest(manifest,
+        if (!resume || !Files.exists(manifest)) {
+            writeManifest(manifest,
                 "lhsPoints=" + lhsPoints,
                 "refineTop=" + refineTop,
                 "nmIterations=" + nmIterations,
@@ -89,9 +95,17 @@ public final class CalibrationRunner {
                 "seed=" + seed,
                 "ONE_TICK_IN_YEARS=" + Settings.ONE_TICK_IN_YEARS,
                 "params=" + CalibrationSpace.PARAMS);
+        }
 
         List<String> pointsHeader = pointsHeader();
         List<EvalRow> allRows = new ArrayList<>();
+        Map<String, EvalRow> cacheByPoint = new HashMap<>();
+
+        if (resume && Files.exists(pointsCsv)) {
+            int loaded = loadExistingRows(pointsCsv, pointsHeader, allRows, cacheByPoint);
+            System.out.println("=== Resume mode: loaded " + loaded + " completed evaluations from "
+                + pointsCsv.toAbsolutePath() + " ===");
+        }
 
         // ---- Phase A: Latin Hypercube survey ----
         System.out.println("=== LHS survey: " + lhsPoints + " points, "
@@ -100,19 +114,34 @@ public final class CalibrationRunner {
         long t0 = System.currentTimeMillis();
         for (int i = 0; i < lhs.size(); i++) {
             CandidatePoint p = lhs.get(i);
+            String key = pointKey(p);
+            EvalRow cached = cacheByPoint.get(key);
+            if (cached != null) {
+            System.out.printf(Locale.ROOT, "[LHS %3d/%d] cache hit loss=%.4f%n",
+                i + 1, lhs.size(), cached.evaluation.meanLoss);
+            continue;
+            }
+
             EvaluationResult r = evaluator.evaluate(p);
             EvalRow row = new EvalRow("LHS", i, -1, r);
             allRows.add(row);
+            cacheByPoint.put(key, row);
             CsvWriter.appendRow(pointsCsv, pointsHeader, row.toCsv());
             System.out.printf(Locale.ROOT, "[LHS %3d/%d] loss=%.4f %s%n",
-                    i + 1, lhs.size(), r.meanLoss, summariseAvg(r));
+                i + 1, lhs.size(), r.meanLoss, summariseAvg(r));
         }
         long lhsMillis = System.currentTimeMillis() - t0;
         System.out.printf(Locale.ROOT, "=== LHS done in %.1fs ===%n", lhsMillis / 1000.0);
 
         // ---- Phase B: Nelder-Mead refinement of the top-K LHS points ----
-        allRows.sort(Comparator.comparingDouble(r -> r.evaluation.meanLoss));
-        List<EvalRow> seeds = allRows.subList(0, Math.min(refineTop, allRows.size()));
+        List<EvalRow> lhsRows = new ArrayList<>();
+        for (EvalRow row : allRows) {
+            if ("LHS".equals(row.source)) lhsRows.add(row);
+        }
+        lhsRows.sort(Comparator.comparingDouble(r -> r.evaluation.meanLoss));
+        // Copy seeds to a standalone list: allRows is appended during NM evals,
+        // and iterating a live subList view would fail with ConcurrentModificationException.
+        List<EvalRow> seeds = new ArrayList<>(lhsRows.subList(0, Math.min(refineTop, lhsRows.size())));
         List<String> convergenceHeader = Arrays.asList(
                 "refineRound", "iteration", "operation",
                 "bestLoss", "worstLoss", "simplexExtent",
@@ -126,9 +155,18 @@ public final class CalibrationRunner {
 
             final int round = r;
             NelderMead.Result nmResult = NelderMead.optimise(seedPoint, p -> {
+                String key = pointKey(p);
+                EvalRow cached = cacheByPoint.get(key);
+                if (cached != null) {
+                    System.out.printf(Locale.ROOT, "  [NM%d cache] loss=%.4f%n",
+                            round, cached.evaluation.meanLoss);
+                    return cached.evaluation;
+                }
+
                 EvaluationResult er = evaluator.evaluate(p);
                 EvalRow row = new EvalRow("NM" + round, -1, allRows.size(), er);
                 allRows.add(row);
+                cacheByPoint.put(key, row);
                 try {
                     CsvWriter.appendRow(pointsCsv, pointsHeader, row.toCsv());
                 } catch (IOException ioe) {
@@ -198,14 +236,22 @@ public final class CalibrationRunner {
         final int orderIndex;
         final int globalIndex;
         final EvaluationResult evaluation;
+        final List<String> precomputedCsv;
         EvalRow(String source, int orderIndex, int globalIndex, EvaluationResult evaluation) {
+            this(source, orderIndex, globalIndex, evaluation, null);
+        }
+        EvalRow(String source, int orderIndex, int globalIndex, EvaluationResult evaluation, List<String> precomputedCsv) {
             this.source = source;
             this.orderIndex = orderIndex;
             this.globalIndex = globalIndex;
             this.evaluation = evaluation;
+            this.precomputedCsv = precomputedCsv;
         }
 
         List<String> toCsv() {
+            if (precomputedCsv != null) {
+                return precomputedCsv;
+            }
             List<String> row = new ArrayList<>();
             row.add(source);
             row.add(String.valueOf(orderIndex));
@@ -259,6 +305,92 @@ public final class CalibrationRunner {
               .append(formatDouble(e.getValue()));
         }
         return sb.append('}').toString();
+    }
+
+    private static int loadExistingRows(Path pointsCsv,
+                                        List<String> expectedHeader,
+                                        List<EvalRow> allRows,
+                                        Map<String, EvalRow> cacheByPoint) throws IOException {
+        List<String> lines = Files.readAllLines(pointsCsv, StandardCharsets.UTF_8);
+        if (lines.size() <= 1) return 0;
+
+        List<String> header = parseCsvLine(lines.get(0));
+        if (!header.equals(expectedHeader)) {
+            throw new IllegalStateException("points.csv header mismatch in resume mode: " + pointsCsv);
+        }
+
+        int loaded = 0;
+        for (int i = 1; i < lines.size(); i++) {
+            String line = lines.get(i);
+            if (line == null || line.isBlank()) continue;
+
+            List<String> cols = parseCsvLine(line);
+            if (cols.size() != expectedHeader.size()) {
+                throw new IllegalStateException("Malformed points.csv row at line " + (i + 1));
+            }
+
+            String source = cols.get(0);
+            int orderIndex = Integer.parseInt(cols.get(1));
+            int globalIndex = Integer.parseInt(cols.get(2));
+            double meanLoss = Double.parseDouble(cols.get(3));
+
+            Map<String, Double> values = new LinkedHashMap<>();
+            int idx = 4;
+            for (CalibrationParam p : CalibrationSpace.PARAMS) {
+                values.put(p.settingsField(), Double.parseDouble(cols.get(idx++)));
+            }
+
+            int replicateCount = Integer.parseInt(cols.get(idx++));
+            long elapsedMillis = Long.parseLong(cols.get(idx + 7));
+
+            CandidatePoint point = new CandidatePoint(values);
+            EvaluationResult evaluation = new EvaluationResult(
+                    point,
+                    meanLoss,
+                    List.of(),
+                    new ArrayList<>(Math.max(0, replicateCount)),
+                    elapsedMillis
+            );
+            EvalRow row = new EvalRow(source, orderIndex, globalIndex, evaluation, new ArrayList<>(cols));
+            allRows.add(row);
+            cacheByPoint.putIfAbsent(pointKey(point), row);
+            loaded++;
+        }
+        return loaded;
+    }
+
+    private static String pointKey(CandidatePoint p) {
+        StringBuilder sb = new StringBuilder();
+        int i = 0;
+        for (CalibrationParam param : CalibrationSpace.PARAMS) {
+            if (i++ > 0) sb.append('|');
+            sb.append(formatDouble(p.get(param.settingsField())));
+        }
+        return sb.toString();
+    }
+
+    private static List<String> parseCsvLine(String line) {
+        List<String> out = new ArrayList<>();
+        StringBuilder field = new StringBuilder();
+        boolean inQuotes = false;
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '"') {
+                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    field.append('"');
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (c == ',' && !inQuotes) {
+                out.add(field.toString());
+                field.setLength(0);
+            } else {
+                field.append(c);
+            }
+        }
+        out.add(field.toString());
+        return out;
     }
 
     private static void writeManifest(Path path, String... lines) throws IOException {

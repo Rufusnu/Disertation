@@ -53,7 +53,7 @@ public final class Settings {
 
     public static double BEAR_MAX_GENERATE_AGE = 25;
     public static double BEAR_MIN_REPRODUCTION_AGE = 4;
-    public static double BEAR_REPRODUCTION_COOLDOWN_YEARS = 2.14126; // calibrated 2026-06-03 (Phase-1 LHS-12)
+    public static double BEAR_REPRODUCTION_COOLDOWN_YEARS = 3.31908; // calibrated 2026-06-11 (sweep-20260609-210730 NM1, 1000x1000 map)
     public static double BEAR_GESTATION_PERIOD_YEARS = 1;
     /** Fraction of founding reproductive females that start the simulation already pregnant
      *  (with a random remaining gestation in [0, BEAR_GESTATION_PERIOD_YEARS)) so the first
@@ -73,10 +73,10 @@ public final class Settings {
     public static double BEAR_INITIAL_SATIETY_MIN = 0.35;
     public static double BEAR_INITIAL_SATIETY_MAX = 0.75;
     public static double BEAR_SATIETY_MAX = 1.0;
-    public static double BEAR_SATIETY_DECAY_PER_TICK = 0.000962273; // calibrated 2026-06-03 (Phase-1 LHS-12)
+    public static double BEAR_SATIETY_DECAY_PER_TICK = 0.000590732; // calibrated 2026-06-11 (sweep-20260609-210730 NM1, 1000x1000 map)
     public static double BEAR_SATIETY_DECAY_PER_TICK_PREGNANT_DEBUFF = 1.4;
     /** Metabolism multiplier during hibernation; <1 means bears burn less satiety per tick. */
-    public static double BEAR_HIBERNATION_SATIETY_DECAY_MULTIPLIER = 0.170415; // calibrated 2026-06-03 (Phase-1 LHS-12)
+    public static double BEAR_HIBERNATION_SATIETY_DECAY_MULTIPLIER = 0.373257; // calibrated 2026-06-11 (sweep-20260609-210730 NM1, 1000x1000 map)
     /** Fraction of simulation year at which hibernation starts (0.83 ~ early November). */
     public static double BEAR_HIBERNATION_START_YEAR_FRACTION = 0.83;
     /** Fraction of simulation year at which hibernation ends (0.17 ~ early March). */
@@ -109,7 +109,7 @@ public final class Settings {
     /** Sex-specific old-age mortality multipliers (females are longer-lived). */
     public static double DEATH_RATE_AFTER_MAX_AGE_FEMALE_MULTIPLIER = 0.9;
     public static double DEATH_RATE_AFTER_MAX_AGE_MALE_MULTIPLIER = 1.1;
-    public static double BEAR_DANGER_DEATH_RATE_PER_TICK = 0.0000229317; // calibrated 2026-06-03 (Phase-1 LHS-12)
+    public static double BEAR_DANGER_DEATH_RATE_PER_TICK = 0.0000187596; // calibrated 2026-06-11 (sweep-20260609-210730 NM1, 1000x1000 map)
     public static double BEAR_DANGER_CHILD_MULTIPLIER = 3.5;
     /** Sex-specific danger mortality multipliers (males roam more and have higher exposure). */
     public static double BEAR_DANGER_DEATH_RATE_FEMALE_MULTIPLIER = 0.9;
@@ -120,9 +120,9 @@ public final class Settings {
     // Reproduction: brown bear litters average 2.0-2.5 cubs (Swenson et al. 2001).
     // BEAR_LITTER_SIZE_STD controls between-mother variance; per-cub mortality is
     // applied at birth time and represents perinatal losses.
-    public static double BEAR_LITTER_SIZE_MEAN = 2.36278; // calibrated 2026-06-03 (Phase-1 LHS-12)
+    public static double BEAR_LITTER_SIZE_MEAN = 1.71563; // calibrated 2026-06-11 (sweep-20260609-210730 NM1, 1000x1000 map)
     public static double BEAR_LITTER_SIZE_STD = 0.6;
-    public static double BEAR_INFANT_MORTALITY_AT_BIRTH = 0.437224; // calibrated 2026-06-03 (Phase-1 LHS-12)
+    public static double BEAR_INFANT_MORTALITY_AT_BIRTH = 0.151540; // calibrated 2026-06-11 (sweep-20260609-210730 NM1, 1000x1000 map)
 
     private Settings() {}
 }

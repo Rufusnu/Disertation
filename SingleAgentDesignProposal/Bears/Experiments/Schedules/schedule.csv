@@ -10,8 +10,3 @@
 # change in year 25" scenario - useful for testing why population could
 # rise after a regime shift (e.g. post-2000 protections in Romania).
 year,parameter,value
-0,BEAR_DANGER_DEATH_RATE_PER_TICK,0.000020
-0,FOOD_GROWN_PER_TICK,0.005
-10,BEAR_DANGER_DEATH_RATE_PER_TICK,0.000010
-25,FOOD_GROWN_PER_TICK,0.0065
-40,BEAR_DANGER_CHILD_MULTIPLIER,2.5

@@ -205,12 +205,15 @@ public final class BatchRunnerUI extends JFrame {
         addOverrideButton.addActionListener(e -> addOverride());
         JButton removeOverrideButton = new JButton("Remove selected");
         removeOverrideButton.addActionListener(e -> removeSelectedOverride());
+        JButton importScheduleButton = new JButton("Import schedule");
+        importScheduleButton.addActionListener(e -> importScheduleIntoOverridesTable());
         addOverridePanel.add(new JLabel("Year"));
         addOverridePanel.add(overrideYearField);
         addOverridePanel.add(overrideFieldCombo);
         addOverridePanel.add(overrideValueField);
         addOverridePanel.add(addOverrideButton);
         addOverridePanel.add(removeOverrideButton);
+        addOverridePanel.add(importScheduleButton);
 
         overridesPanel.add(addOverridePanel, BorderLayout.NORTH);
         overridesPanel.add(new JScrollPane(overridesTable), BorderLayout.CENTER);
@@ -484,6 +487,41 @@ public final class BatchRunnerUI extends JFrame {
         }
     }
 
+    private void importScheduleIntoOverridesTable() {
+        try {
+            String schedulePath = scheduleField.getText().trim();
+            if (schedulePath.isEmpty()) {
+                showError("Schedule path is empty.");
+                return;
+            }
+
+            Path resolved = resolvePath(schedulePath);
+            if (!Files.exists(resolved)) {
+                showError("Schedule file not found: " + resolved.toAbsolutePath());
+                return;
+            }
+
+            ParameterSchedule schedule = ParameterSchedule.load(resolved);
+            overridesModel.setRowCount(0);
+            for (ParameterSchedule.Entry entry : schedule.entries()) {
+                overridesModel.addRow(new Object[]{formatScheduleYear(entry.simulationYear), entry.parameter, entry.value});
+            }
+
+            appendLog("Imported schedule into overrides table: " + resolved.toAbsolutePath()
+                    + " (entries=" + schedule.entries().size() + ")");
+        } catch (Exception ex) {
+            showError("Failed to import schedule: " + ex.getMessage());
+        }
+    }
+
+    private static String formatScheduleYear(double year) {
+        long asLong = (long) year;
+        if (year == asLong) {
+            return Long.toString(asLong);
+        }
+        return Double.toString(year);
+    }
+
     private void browseMapFile(ActionEvent ignored) {
         JFileChooser chooser = new JFileChooser(Paths.get("").toAbsolutePath().toFile());
         int result = chooser.showOpenDialog(this);
@@ -561,6 +599,25 @@ public final class BatchRunnerUI extends JFrame {
             scheduleField.setText(props.getProperty("schedule", scheduleField.getText()));
             referenceField.setText(props.getProperty("reference", referenceField.getText()));
             outputDirField.setText(props.getProperty("outputDir", outputDirField.getText()));
+
+            String loadedSchedulePath = scheduleField.getText().trim();
+            if (!loadedSchedulePath.isEmpty()) {
+                Path resolvedSchedule = resolvePath(loadedSchedulePath);
+                if (Files.exists(resolvedSchedule)) {
+                    try {
+                        ParameterSchedule loadedSchedule = ParameterSchedule.load(resolvedSchedule);
+                        appendLog("Profile schedule loaded: " + resolvedSchedule.toAbsolutePath()
+                                + " (entries=" + loadedSchedule.entries().size() + ")");
+                    } catch (Exception scheduleEx) {
+                        appendLog("Profile schedule path set, but failed to parse schedule file: "
+                                + resolvedSchedule.toAbsolutePath() + " (" + scheduleEx.getMessage() + ")");
+                    }
+                } else {
+                    appendLog("Profile schedule path set, but file was not found: "
+                            + resolvedSchedule.toAbsolutePath()
+                            + ". The run will fallback to stationary unless path is fixed.");
+                }
+            }
 
             overridesModel.setRowCount(0);
             Map<Integer, String> idxYear = new TreeMap<>();

@@ -19,6 +19,10 @@ import java.util.Map;
  *   5. meanSatiety               - mean satiety in steady state
  *   6. starvationShare           - starvation deaths / total deaths
  *   7. oldAgeShare               - old-age deaths / total deaths
+ *   8. endToMeanRatio            - end-population should stay close to mean-population
+ *   9. endToStartRatio           - end-population should be near/above start-population
+ *  10. tailSlopeRelPerYear       - late-window population trend should be ~flat/slightly positive
+ *  11. maxDrawdown               - collapse from post-burn-in peak to end should be small
  */
 public final class StationarityTargets {
 
@@ -65,6 +69,18 @@ public final class StationarityTargets {
     /** Some bears must reach old age (>= ~5% of deaths). */
     public static final double OLDAGE_MIN = 0.05, OLDAGE_MAX = 0.60, W_OLDAGE = 1.5;
 
+    /** End population should be close to evaluation-window mean (avoid boom-then-bust). */
+    public static final double END_MEAN_MIN = 0.97, END_MEAN_MAX = 1.06, W_END_MEAN = 3.0;
+
+    /** End population should be at least stable/slightly higher than window start. */
+    public static final double END_START_MIN = 1.00, END_START_MAX = 1.10, W_END_START = 2.0;
+
+    /** Late-window trend (relative/year): allow near-flat to slightly positive. */
+    public static final double TAIL_SLOPE_MIN = -0.005, TAIL_SLOPE_MAX = 0.03, W_TAIL_SLOPE = 3.0;
+
+    /** Max drawdown from post-burn-in peak to end should stay limited. */
+    public static final double DRAWDOWN_MIN = 0.0, DRAWDOWN_MAX = 0.10, W_DRAWDOWN = 3.0;
+
     /** Hinge penalty: ((v - upper)/scale)^2 if v > upper, ((lower - v)/scale)^2 if v < lower, else 0. */
     public static double bandPenalty(double v, double lower, double upper) {
         double mid = 0.5 * (lower + upper);
@@ -108,6 +124,18 @@ public final class StationarityTargets {
         double oldPen = bandPenalty(s.oldAgeShare, OLDAGE_MIN, OLDAGE_MAX);
         components.put("oldAgeShare", W_OLDAGE * oldPen);
 
+        double endMeanPen = bandPenalty(s.endToMeanRatio, END_MEAN_MIN, END_MEAN_MAX);
+        components.put("endToMeanRatio", W_END_MEAN * endMeanPen);
+
+        double endStartPen = bandPenalty(s.endToStartRatio, END_START_MIN, END_START_MAX);
+        components.put("endToStartRatio", W_END_START * endStartPen);
+
+        double tailSlopePen = bandPenalty(s.tailSlopeRelPerYear, TAIL_SLOPE_MIN, TAIL_SLOPE_MAX);
+        components.put("tailSlopeRelPerYear", W_TAIL_SLOPE * tailSlopePen);
+
+        double drawdownPen = bandPenalty(s.maxDrawdown, DRAWDOWN_MIN, DRAWDOWN_MAX);
+        components.put("maxDrawdown", W_DRAWDOWN * drawdownPen);
+
         double total = 0;
         for (double v : components.values()) total += v;
         return new Score(total, components);
@@ -122,10 +150,19 @@ public final class StationarityTargets {
         public final double meanSatiety;
         public final double starvationShare;
         public final double oldAgeShare;
+        public final double startPopulation;
+        public final double endPopulation;
+        public final double endToMeanRatio;
+        public final double endToStartRatio;
+        public final double tailSlopeRelPerYear;
+        public final double maxDrawdown;
 
         public ReplicateSummary(double meanPopulation, double populationCV, boolean extinct,
                                 double perCapitaBirthRate, double meanSatiety,
-                                double starvationShare, double oldAgeShare) {
+                                double starvationShare, double oldAgeShare,
+                                double startPopulation, double endPopulation,
+                                double endToMeanRatio, double endToStartRatio,
+                                double tailSlopeRelPerYear, double maxDrawdown) {
             this.meanPopulation = meanPopulation;
             this.populationCV = populationCV;
             this.extinct = extinct;
@@ -133,14 +170,22 @@ public final class StationarityTargets {
             this.meanSatiety = meanSatiety;
             this.starvationShare = starvationShare;
             this.oldAgeShare = oldAgeShare;
+            this.startPopulation = startPopulation;
+            this.endPopulation = endPopulation;
+            this.endToMeanRatio = endToMeanRatio;
+            this.endToStartRatio = endToStartRatio;
+            this.tailSlopeRelPerYear = tailSlopeRelPerYear;
+            this.maxDrawdown = maxDrawdown;
         }
 
         @Override
         public String toString() {
             return String.format(Locale.ROOT,
-                    "[meanPop=%.0f cv=%.3f ext=%s birth=%.3f sat=%.3f starv=%.2f old=%.2f]",
+                    "[meanPop=%.0f cv=%.3f ext=%s birth=%.3f sat=%.3f starv=%.2f old=%.2f end/mean=%.3f end/start=%.3f tailSlope=%.4f drawdown=%.3f]",
                     meanPopulation, populationCV, extinct,
-                    perCapitaBirthRate, meanSatiety, starvationShare, oldAgeShare);
+                    perCapitaBirthRate, meanSatiety, starvationShare, oldAgeShare,
+                    endToMeanRatio, endToStartRatio,
+                    tailSlopeRelPerYear, maxDrawdown);
         }
     }
 
