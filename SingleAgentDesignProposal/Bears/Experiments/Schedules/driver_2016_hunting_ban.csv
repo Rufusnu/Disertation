@@ -1,0 +1,13 @@
+# DRIVER: 2016 - Trophy-hunting ban. In October 2016 Romania's environment
+# ministry banned trophy hunting of brown bears (and wolf, lynx, wildcat),
+# removing the large annual hunting quota that had been the dominant source of
+# human-caused bear mortality. This is the single most-cited policy event behind
+# the post-2016 population rise.
+#
+# Modelled effect: a substantial step reduction in danger (human-caused)
+# mortality from 2016. Calendar 2016 = simulation year 11.
+#
+# Baseline BEAR_DANGER_DEATH_RATE_PER_TICK = 0.0000187596
+# New value 0.0000131 ~= -30% (removal of the trophy-hunting quota).
+year,parameter,value
+11,BEAR_DANGER_DEATH_RATE_PER_TICK,0.0000131

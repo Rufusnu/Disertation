@@ -1,0 +1,12 @@
+# DRIVER: 2007 - Romania joins the EU; brown bear becomes a strictly protected
+# species under the EU Habitats Directive (Annex II & IV). Legal persecution and
+# unregulated killing decline as protection and damage-compensation schemes come
+# into force.
+#
+# Modelled effect: a step reduction in human-caused (danger) mortality from 2007.
+# Calendar 2007 = simulation year 2 (baseline window starts at 2005 = year 0).
+#
+# Baseline BEAR_DANGER_DEATH_RATE_PER_TICK = 0.0000187596
+# New value 0.0000159 ~= -15% (formal protection, reduced persecution).
+year,parameter,value
+2,BEAR_DANGER_DEATH_RATE_PER_TICK,0.0000159

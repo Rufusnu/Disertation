@@ -1,0 +1,19 @@
+# DRIVER: Combined realistic history (2005-2021). Layers the individual drivers
+# into one "best-guess" reconstruction of what actually happened, to test whether
+# the combination reproduces the observed 5800 -> 7500 rise. Run this against the
+# baseline (no drivers) and the single-driver schedules to attribute the effect.
+#
+# Events (calendar -> simulation year):
+#   2007 (yr 2)  EU accession / protection      -> danger mortality down
+#   2010 (yr 5)  rising anthropogenic food       -> food up
+#   2015 (yr 10) rising anthropogenic food       -> food up
+#   2016 (yr 11) trophy-hunting ban              -> danger mortality down hard
+#   2021 (yr 16) intervention/cull law           -> danger mortality up
+#
+# Baselines: BEAR_DANGER_DEATH_RATE_PER_TICK=0.0000187596, FOOD_GROWN_PER_TICK=0.0045
+year,parameter,value
+2,BEAR_DANGER_DEATH_RATE_PER_TICK,0.0000159
+5,FOOD_GROWN_PER_TICK,0.0048
+10,FOOD_GROWN_PER_TICK,0.0051
+11,BEAR_DANGER_DEATH_RATE_PER_TICK,0.0000131
+16,BEAR_DANGER_DEATH_RATE_PER_TICK,0.0000244
