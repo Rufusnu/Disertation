@@ -46,6 +46,20 @@ public enum BearCellType implements Cell.CellType {
         return averageDanger + RngSupport.environment().nextDouble(-Settings.DANGER_MAX_VARIANCE, Settings.DANGER_MAX_VARIANCE);
     }
 
+    /**
+     * Natural maximum food a cell of this type can hold: the top of its initial
+     * food range ({@code averageFood + FOOD_MAX_VARIANCE}). Food regrowth is
+     * clamped to this so a lightly-grazed cell tops up to its habitat's natural
+     * level instead of accumulating without bound (which would let the map's
+     * carrying capacity drift upward over time). Returns -1 for NONE cells,
+     * which hold no food. */
+    public double maxFood() {
+        if (this == NONE) {
+            return -1;
+        }
+        return averageFood + Settings.FOOD_MAX_VARIANCE;
+    }
+
     public boolean hasEnoughFood(double value) {
         return this != NONE && value >= Settings.FOOD_THRESHOLD;
     }
