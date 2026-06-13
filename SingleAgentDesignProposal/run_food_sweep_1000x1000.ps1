@@ -1,8 +1,16 @@
 param(
-    # Comma-separated FOOD_GROWN_PER_TICK values to test. Default brackets the
-    # calibrated 0.005 downward, since the current equilibrium is far above 5800
-    # and we need LESS food regrowth to bring carrying capacity down.
+    # Which Settings field to sweep. Default sweeps food regrowth (the carrying-
+    # capacity lever). Set e.g. -Param BEAR_FOUNDING_AGE_MEAN to sweep the founding
+    # age structure (the initial-transient lever) instead.
+    [string]$Param = "FOOD_GROWN_PER_TICK",
+
+    # Comma-separated values of -Param to test. Default brackets the calibrated
+    # 0.005 food downward; override when sweeping a different field.
     [string]$Values = "0.005,0.004,0.003,0.0025,0.002,0.0015",
+
+    # When sweeping a non-food field, optionally pin FOOD_GROWN_PER_TICK to this
+    # value so the carrying-capacity lever is held fixed. Empty = leave at default.
+    [string]$FixedFood = "",
 
     [int]$InitialBears = 5800,
     [int]$MapLength = 1000,
@@ -45,6 +53,7 @@ $classPath = Get-ClassPath -ProjectDir $projectDir
 
 $javaArgs = @(
     $Xmx,
+    "-Dsweep.param=$Param",
     "-Dsweep.values=$Values",
     "-Dsweep.initialBears=$InitialBears",
     "-Dsweep.mapLength=$MapLength",
@@ -61,10 +70,17 @@ $javaArgs = @(
     "Bears.Experiments.Calibration.FoodGrownSweep"
 )
 
-Write-Host "Running FOOD_GROWN_PER_TICK sweep"
+if ($FixedFood -and $FixedFood.Trim().Length -gt 0) {
+    $javaArgs = @("-Dsweep.fixedFood=$FixedFood") + $javaArgs
+}
+
+Write-Host "Running $Param sweep"
 Write-Host "Project dir: $projectDir"
 Write-Host "Classpath: $classPath"
 Write-Host "Values: $Values"
+if ($FixedFood -and $FixedFood.Trim().Length -gt 0) {
+    Write-Host "FOOD_GROWN_PER_TICK pinned: $FixedFood"
+}
 Write-Host "Initial bears: $InitialBears  Years: $Years  Replicates: $Replicates"
 Write-Host "Target population: $TargetPop"
 Write-Host ""

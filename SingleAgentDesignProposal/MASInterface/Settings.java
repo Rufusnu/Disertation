@@ -10,6 +10,32 @@ public final class Settings {
      * uniform map, and overrides {@link #MAP_LENGTH} with the grid size.
      */
     public static String MAP_SOURCE = "";
+    /**
+     * Optional path to a saved {@link Bears.BearEnvironment.BearSnapshot}. When
+     * non-empty, the simulation restores this spun-up population and habitat
+     * instead of generating random founders, letting scenarios skip the
+     * multi-year initialization transient. Overrides {@link #MAP_SOURCE} and the
+     * founder count for that run; the simulation clock still starts at tick 0.
+     */
+    public static String SNAPSHOT_SOURCE = "E:\\Github\\Disertation\\SingleAgentDesignProposal\\spin-up-snapshots\\romania-y65-satiety-0005.bsnp";
+    /**
+     * When non-empty, the simulation writes a {@link Bears.BearEnvironment.BearSnapshot}
+     * to this path once the clock reaches {@link #SNAPSHOT_SAVE_AT_YEAR}, then stops.
+     * Used to produce the spin-up checkpoint that {@link #SNAPSHOT_SOURCE} reloads.
+     */
+    public static String SNAPSHOT_SAVE_PATH = "";
+    /** Simulation year at which to write {@link #SNAPSHOT_SAVE_PATH} (if set). */
+    public static double SNAPSHOT_SAVE_AT_YEAR = 13.0;
+    /**
+     * Optional path to a characterization directory (produced by
+     * {@code SnapshotTool -Dsnap.mode=characterize}). When non-empty and no
+     * snapshot is loaded, founders are generated from the measured stable-state
+     * distributions (age, satiety, sex, reproductive state, per-habitat
+     * placement) and the map food is initialised to the measured drawn-down
+     * level instead of full - removing the initialization transient without
+     * needing a multi-year spin-up. See {@code BalancedInitializer}.
+     */
+    public static String BALANCED_INIT_SOURCE = "E:\\Github\\Disertation\\SingleAgentDesignProposal\\spin-up-snapshots\\romania-y65-satiety-0005.bsnp.characterization";
     public static int THREAD_COUNT = 16;
     public static int SIMULATION_LENGTH = 100; // in seconds (wall-clock budget when SIMULATION_MAX_TICKS <= 0)
     /** If > 0, simulation runs for exactly this many ticks regardless of wall time. Used by the experiment pipeline. */
@@ -35,7 +61,7 @@ public final class Settings {
     public static double DANGER_THRESHOLD = 0.5;
 
     public static double FOOD_EATEN_PER_TICK = 0.01;
-    public static double FOOD_GROWN_PER_TICK = 0.005;
+    public static double FOOD_GROWN_PER_TICK = 0.0045;
 
     public static double FOOD_MAX_VARIANCE = 0.2;
     public static double FOREST_AVG_FOOD = 0.6;
@@ -52,6 +78,17 @@ public final class Settings {
     public static double MOUNTAIN_AVG_DANGER = 0.3;
 
     public static double BEAR_MAX_GENERATE_AGE = 25;
+    /**
+     * Mean age (years) of the founding population's age distribution. Founders are
+     * seeded from a truncated-exponential, young-skewed age pyramid with this mean
+     * (capped at {@link #BEAR_MAX_GENERATE_AGE}) instead of a flat uniform spread.
+     * A uniform 0..25 spread has mean 12.5 - roughly double a real brown-bear
+     * population - which over-represents middle-aged bears and induces a large
+     * initialization transient (a birth pulse followed by a deep crash) as the
+     * unnatural structure equilibrates. A realistic stable age distribution is
+     * young-skewed with mean ~6-8 yr (Swenson et al.; standard for individual-based
+     * population models, cf. Grimm & Railsback's pattern-oriented modelling). */
+    public static double BEAR_FOUNDING_AGE_MEAN = 7.0;
     public static double BEAR_MIN_REPRODUCTION_AGE = 4;
     public static double BEAR_REPRODUCTION_COOLDOWN_YEARS = 3.31908; // calibrated 2026-06-11 (sweep-20260609-210730 NM1, 1000x1000 map)
     public static double BEAR_GESTATION_PERIOD_YEARS = 1;
@@ -73,7 +110,7 @@ public final class Settings {
     public static double BEAR_INITIAL_SATIETY_MIN = 0.35;
     public static double BEAR_INITIAL_SATIETY_MAX = 0.75;
     public static double BEAR_SATIETY_MAX = 1.0;
-    public static double BEAR_SATIETY_DECAY_PER_TICK = 0.000590732; // calibrated 2026-06-11 (sweep-20260609-210730 NM1, 1000x1000 map)
+    public static double BEAR_SATIETY_DECAY_PER_TICK = 0.0005; // calibrated 2026-06-11 (sweep-20260609-210730 NM1, 1000x1000 map)
     public static double BEAR_SATIETY_DECAY_PER_TICK_PREGNANT_DEBUFF = 1.4;
     /** Metabolism multiplier during hibernation; <1 means bears burn less satiety per tick. */
     public static double BEAR_HIBERNATION_SATIETY_DECAY_MULTIPLIER = 0.373257; // calibrated 2026-06-11 (sweep-20260609-210730 NM1, 1000x1000 map)

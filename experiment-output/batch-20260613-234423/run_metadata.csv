@@ -1,0 +1,2 @@
+scenarioId,runId,replicateIndex,seed,maxTicks,initialBearCount,mapLength,mapSource,parameterOverrides,scheduleSource,scheduleEntries
+baseline-ui,baseline-ui-r0,0,-2932002319331483421,262981,5800,1000,reference-data\generated-maps\U2018_CLC2018_V2020_20u1-1000x1000.txt,,SingleAgentDesignProposal\Bears\Experiments\Schedules\schedule.csv,0

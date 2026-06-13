@@ -67,6 +67,11 @@ public final class FoodGrownSweep {
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
     public static void main(String[] args) throws IOException {
+        // Which Settings field to sweep (default keeps the original food behaviour).
+        String param      = strProp("sweep.param", "FOOD_GROWN_PER_TICK");
+        // When sweeping a non-food field, optionally pin FOOD_GROWN_PER_TICK to this
+        // value so the carrying-capacity lever stays fixed. NaN = leave at default.
+        double fixedFood  = dblProp("sweep.fixedFood", Double.NaN);
         double[] values   = dblList("sweep.values", new double[]{0.005, 0.004, 0.003, 0.0025, 0.002, 0.0015});
         int initialBears  = intProp("sweep.initialBears", 5800);
         double years      = dblProp("sweep.years", 35.0);
@@ -87,22 +92,25 @@ public final class FoodGrownSweep {
 
         long maxTicks = (long) Math.ceil(years / Settings.ONE_TICK_IN_YEARS);
 
-        System.out.println("=== FOOD_GROWN_PER_TICK sweep ===");
+        System.out.println("=== " + param + " sweep ===");
         System.out.printf(Locale.ROOT,
                 "values=%s  initialBears=%d  years=%.0f  tailYears=%.0f  replicates=%d  map=%s%n",
                 Arrays.toString(values), initialBears, years, tailYears, replicates, mapSource);
+        if (!Double.isNaN(fixedFood)) {
+            System.out.printf(Locale.ROOT, "FOOD_GROWN_PER_TICK pinned to %s%n", fmt(fixedFood));
+        }
         System.out.println("Output: " + outDir.toAbsolutePath());
         System.out.println();
 
         List<String> summaryHeader = Arrays.asList(
-                "foodGrownPerTick", "replicates",
+                param, "replicates",
                 "startPop", "finalPop", "tailMeanPop", "tailSlopeRelPerYear",
                 "minPop", "minYear", "peakPop", "peakYear", "finalMeanSatiety",
                 "absDiffFromTarget", "elapsedMillis");
 
         List<double[]> rankRows = new ArrayList<>(); // {value, finalPop, slope, absDiff}
 
-        for (double food : values) {
+        for (double value : values) {
             long t0 = System.currentTimeMillis();
 
             // Per-year population averaged across replicates.
@@ -112,8 +120,8 @@ public final class FoodGrownSweep {
             double startPop = 0;
 
             for (int r = 0; r < replicates; r++) {
-                long repSeed = mix(seed ^ Double.doubleToLongBits(food), r);
-                ReplicateTrace tr = runOne(food, initialBears, mapLength, mapSource,
+                long repSeed = mix(seed ^ Double.doubleToLongBits(value), r);
+                ReplicateTrace tr = runOne(param, value, fixedFood, initialBears, mapLength, mapSource,
                         maxTicks, sampleEvery, popCap, tailYears, repSeed);
 
                 startPop = tr.startPop;
@@ -146,7 +154,7 @@ public final class FoodGrownSweep {
             long elapsed       = System.currentTimeMillis() - t0;
 
             // Write the averaged trajectory for this value.
-            Path trajCsv = outDir.resolve("trajectory-" + fmtTag(food) + ".csv");
+            Path trajCsv = outDir.resolve("trajectory-" + fmtTag(value) + ".csv");
             List<String> trajHeader = Arrays.asList("year", "meanPopulation");
             List<List<String>> trajRows = new ArrayList<>();
             for (Map.Entry<Integer, double[]> e : yearAccum.entrySet()) {
@@ -156,16 +164,16 @@ public final class FoodGrownSweep {
             CsvWriter.writeRows(trajCsv, trajHeader, trajRows);
 
             CsvWriter.appendRow(summaryCsv, summaryHeader, Arrays.asList(
-                    fmt(food), String.valueOf(replicates),
+                    fmt(value), String.valueOf(replicates),
                     fmt(startPop), fmt(finalPop), fmt(tailMeanPop), fmt(tailSlope),
                     fmt(minPop), fmt(minYear), fmt(peakPop), fmt(peakYear), fmt(finalSat),
                     fmt(absDiff), String.valueOf(elapsed)));
 
-            rankRows.add(new double[]{food, finalPop, tailSlope, absDiff});
+            rankRows.add(new double[]{value, finalPop, tailSlope, absDiff});
 
             System.out.printf(Locale.ROOT,
-                    "food=%-9s finalPop=%-7.0f tailMean=%-7.0f slope=%+.4f/yr  dip=%.0f@y%.0f  peak=%.0f@y%.0f  |Δtarget|=%.0f  (%.1fs)%n",
-                    fmt(food), finalPop, tailMeanPop, tailSlope, minPop, minYear, peakPop, peakYear,
+                    "%s=%-9s finalPop=%-7.0f tailMean=%-7.0f slope=%+.4f/yr  dip=%.0f@y%.0f  peak=%.0f@y%.0f  |Δtarget|=%.0f  (%.1fs)%n",
+                    param, fmt(value), finalPop, tailMeanPop, tailSlope, minPop, minYear, peakPop, peakYear,
                     absDiff, elapsed / 1000.0);
         }
 
@@ -184,11 +192,11 @@ public final class FoodGrownSweep {
         }
 
         System.out.println();
-        System.out.println("================ Food sweep done ================");
+        System.out.println("================ Sweep done ================");
         if (best != null) {
             System.out.printf(Locale.ROOT,
-                    "Closest to flat-at-%.0f: FOOD_GROWN_PER_TICK=%s -> finalPop=%.0f, slope=%+.4f/yr%n",
-                    targetPop, fmt(best[0]), best[1], best[2]);
+                    "Closest to flat-at-%.0f: %s=%s -> finalPop=%.0f, slope=%+.4f/yr%n",
+                    targetPop, param, fmt(best[0]), best[1], best[2]);
             System.out.println("If the bracket does not straddle the target, rerun with values around "
                     + fmt(best[0]) + ".");
         }
@@ -210,7 +218,8 @@ public final class FoodGrownSweep {
         double finalMeanSatiety;
     }
 
-    private static ReplicateTrace runOne(double foodGrownPerTick, int initialBears, int mapLength,
+    private static ReplicateTrace runOne(String param, double paramValue, double fixedFood,
+                                         int initialBears, int mapLength,
                                          String mapSource, long maxTicks, int sampleEvery,
                                          long popCap, double tailYears, long seed) {
         Map<String, Object> previous = new LinkedHashMap<>();
@@ -221,6 +230,7 @@ public final class FoodGrownSweep {
         previous.put("BENCHMARK", Settings.BENCHMARK);
         previous.put("VERBOSE", Settings.VERBOSE);
         previous.put("FOOD_GROWN_PER_TICK", Settings.FOOD_GROWN_PER_TICK);
+        previous.put(param, getField(param));
 
         Settings.AGENTS_NUMBER_SINGLE_EXECUTION = initialBears;
         Settings.MAP_LENGTH = mapLength;
@@ -228,7 +238,10 @@ public final class FoodGrownSweep {
         Settings.POPULATION_CAP = popCap;
         Settings.BENCHMARK = false;
         Settings.VERBOSE = false;
-        Settings.FOOD_GROWN_PER_TICK = foodGrownPerTick;
+        if (!Double.isNaN(fixedFood)) {
+            setField("FOOD_GROWN_PER_TICK", fixedFood);
+        }
+        setField(param, paramValue); // applied last so it wins even if param == FOOD_GROWN_PER_TICK
 
         PrintStream originalOut = System.out;
         List<TickMetrics> samples;
@@ -344,6 +357,37 @@ public final class FoodGrownSweep {
             probe = parent;
         }
         return direct;
+    }
+
+    /** Reads a public static {@link Settings} field by name (boxed). */
+    private static Object getField(String name) {
+        try {
+            return Settings.class.getField(name).get(null);
+        } catch (NoSuchFieldException | IllegalAccessException ex) {
+            throw new IllegalArgumentException("Unknown Settings field to sweep: " + name, ex);
+        }
+    }
+
+    /** Writes a numeric value into a public static {@link Settings} field by name,
+     *  coercing to the field's declared primitive type. */
+    private static void setField(String name, double value) {
+        try {
+            java.lang.reflect.Field f = Settings.class.getField(name);
+            Class<?> t = f.getType();
+            if (t == double.class || t == Double.class) {
+                f.set(null, value);
+            } else if (t == int.class || t == Integer.class) {
+                f.set(null, (int) Math.round(value));
+            } else if (t == long.class || t == Long.class) {
+                f.set(null, Math.round(value));
+            } else if (t == float.class || t == Float.class) {
+                f.set(null, (float) value);
+            } else {
+                throw new IllegalStateException("Unsupported Settings type for " + name + ": " + t);
+            }
+        } catch (NoSuchFieldException | IllegalAccessException ex) {
+            throw new IllegalArgumentException("Cannot set Settings field: " + name, ex);
+        }
     }
 
     private static long mix(long seed, long key) {

@@ -94,6 +94,45 @@ public class BearState extends State {
 		return state;
 	}
 
+	/**
+	 * Rebuilds a state from a saved snapshot: the cell grid (type + food +
+	 * danger per cell) is restored verbatim - no random re-sampling - and the
+	 * agent-occupancy structures are initialised empty, ready for
+	 * {@link #placeSnapshotAgent} calls. See {@link BearSnapshot}.
+	 */
+	public static BearState getInitStateFromSnapshot(int mapLength,
+			BearCellType[][] types, double[][] food, double[][] danger) {
+		BearState state = new BearState();
+		state.mapLength = mapLength;
+		state.map = new int[mapLength][mapLength];
+		state.cellGrid = new BearCell[mapLength][mapLength];
+		for (int x = 0; x < mapLength; x++) {
+			for (int y = 0; y < mapLength; y++) {
+				BearCell cell = new BearCell();
+				cell.setCellType(types[x][y]);
+				cell.setFood(food[x][y]);
+				cell.setDanger(danger[x][y]);
+				state.cellGrid[x][y] = cell;
+				if (types[x][y] == BearCellType.NONE) {
+					state.map[x][y] = BLOCKED;
+				}
+			}
+		}
+		state.padMap(state);
+		state.agentsCoords = new HashMap<Integer, Coords>();
+		state.agentGenders = new HashMap<Integer, BearAgent.Gender>();
+		state.agentCounts = new int[mapLength][mapLength];
+		state.maleAgentCounts = new int[mapLength][mapLength];
+		state.agentsActions = 0;
+		return state;
+	}
+
+	/** Places one restored agent (sets gender, coordinates and occupancy). */
+	public void placeSnapshotAgent(int agentId, BearAgent.Gender gender, int x, int y) {
+		agentGenders.put(agentId, gender);
+		putAgent(agentId, new Coords(x, y));
+	}
+
 	/** Constructs a new vacuum state. */
 	public BearState() {
 	}

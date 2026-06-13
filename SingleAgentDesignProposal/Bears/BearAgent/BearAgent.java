@@ -37,8 +37,30 @@ public class BearAgent extends Agent {
 
     public BearAgent(int id) {
         this(id,
-                RngSupport.forAgent(id).nextDouble(0, Settings.BEAR_MAX_GENERATE_AGE),
+                sampleFoundingAge(id),
                 randomGender(id));
+    }
+
+    /**
+     * Samples a founder's age from a truncated-exponential (young-skewed) age
+     * distribution on [0, {@link Settings#BEAR_MAX_GENERATE_AGE}) with mean
+     * {@link Settings#BEAR_FOUNDING_AGE_MEAN}. This approximates a stable age
+     * pyramid (many young, exponentially fewer old) so the founding population
+     * starts near its stationary structure, instead of the flat uniform spread
+     * that over-represents middle-aged bears and triggers a boom-then-crash
+     * initialization transient. Consumes exactly one RNG draw, preserving the
+     * per-agent random stream layout.
+     */
+    private static double sampleFoundingAge(int id) {
+        double mean = Settings.BEAR_FOUNDING_AGE_MEAN;
+        double maxAge = Settings.BEAR_MAX_GENERATE_AGE;
+        double u = RngSupport.forAgent(id).nextDouble();
+        if (mean <= 0 || maxAge <= 0) {
+            return u * Math.max(0, maxAge); // degenerate: fall back to uniform
+        }
+        double lambda = 1.0 / mean;
+        double cap = 1.0 - Math.exp(-lambda * maxAge); // CDF at the truncation point
+        return -Math.log(1.0 - u * cap) / lambda;       // inverse-CDF -> age in [0, maxAge)
     }
 
     public BearAgent (int id, int newAge) {
@@ -86,6 +108,53 @@ public class BearAgent extends Agent {
 
     private static Gender randomGender(int id) {
         return RngSupport.forAgent(id).nextBoolean() ? Gender.FEMALE : Gender.MALE;
+    }
+
+    /**
+     * Reconstructs a bear with fully specified internal state and no RNG draws.
+     * Used by {@link Bears.BearEnvironment.BearSnapshot} to restore a saved
+     * population exactly. Coordinates live in the state, not the agent.
+     */
+    public static BearAgent fromSnapshot(int id, Gender gender, double age, double satiety,
+                                         double reproductionCooldownYearsRemaining,
+                                         double gestationPeriod, boolean isPregnant,
+                                         int homeX, int homeY) {
+        BearAgent a = new BearAgent(id, age, gender, satiety,
+                reproductionCooldownYearsRemaining, gestationPeriod, isPregnant);
+        a.homeX = homeX;
+        a.homeY = homeY;
+        return a;
+    }
+
+    /** All-fields constructor used only for snapshot restore (no randomness). */
+    private BearAgent(int id, double age, Gender gender, double satiety,
+                      double reproductionCooldownYearsRemaining,
+                      double gestationPeriod, boolean isPregnant) {
+        this.id = id;
+        this.age = age;
+        this.gender = gender;
+        this.satiety = satiety;
+        this.reproductionCooldownYearsRemaining = reproductionCooldownYearsRemaining;
+        this.gestationPeriod = gestationPeriod;
+        this.isPregnant = isPregnant;
+        this.homeX = -1;
+        this.homeY = -1;
+    }
+
+    public double getReproductionCooldownYearsRemaining() {
+        return reproductionCooldownYearsRemaining;
+    }
+
+    public double getGestationPeriod() {
+        return gestationPeriod;
+    }
+
+    public int getHomeX() {
+        return homeX;
+    }
+
+    public int getHomeY() {
+        return homeY;
     }
 
     public int getId() {

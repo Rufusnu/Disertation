@@ -25,6 +25,7 @@ public class BearSimulation extends Simulation {
 	private Map<Integer, BearAgent> agentsById;
 	private Map<DeathCause, Integer> deathCauseCounts;
 	private int lastAgentId;
+	private BearState activeState;
 	private RunMetricsRecorder metricsRecorder;
 	private ScheduleApplier scheduleApplier;
 
@@ -56,27 +57,65 @@ public class BearSimulation extends Simulation {
 	}
 
 	public void startNoPrompt(State initState) {
-        this.environment.setInitialState(initState);
-		System.out.println("Creating bears...");
-		agentsById = new HashMap<Integer, BearAgent>();
 		deathCauseCounts = new HashMap<DeathCause, Integer>();
-		lastAgentId = -1;
 		BearSimulationBenchmark.Counters benchmark = Settings.BENCHMARK ? new BearSimulationBenchmark.Counters() : null;
 
-		for (int i = 0; i < Settings.AGENTS_NUMBER_SINGLE_EXECUTION; i++) {
-            BearAgent bearAgent = new BearAgent(i);
-            lastAgentId = bearAgent.getId();
-            ((BearEnvironment) this.environment).setAgentRandomCoords(bearAgent.getId()); // put agent on a random location on map
-			((BearEnvironment) this.environment).setAgentGender(bearAgent.getId(), bearAgent.getGender());
-            if (Settings.VERBOSE) {
-                System.out.println(bearAgent + " created.");
-            }
-			agentsById.put(bearAgent.getId(), bearAgent);
+		if (Settings.SNAPSHOT_SOURCE != null && !Settings.SNAPSHOT_SOURCE.isBlank()) {
+			// Restore a spun-up population + habitat from a snapshot instead of
+			// generating random founders. This replaces both the map and the
+			// founding cohort; the simulation clock still starts at tick 0.
+			BearSnapshot.Loaded loaded;
+			try {
+				loaded = BearSnapshot.load(java.nio.file.Path.of(Settings.SNAPSHOT_SOURCE));
+			} catch (java.io.IOException e) {
+				throw new RuntimeException("Failed to load snapshot " + Settings.SNAPSHOT_SOURCE + ": " + e.getMessage(), e);
+			}
+			this.activeState = loaded.state;
+			this.environment.setInitialState(loaded.state);
+			this.agentsById = loaded.agentsById;
+			this.lastAgentId = loaded.lastAgentId;
+			Settings.MAP_LENGTH = loaded.state.mapLength();
+			System.out.println("Restored snapshot: " + agentsById.size() + " bears from " + Settings.SNAPSHOT_SOURCE);
+		} else if (Settings.BALANCED_INIT_SOURCE != null && !Settings.BALANCED_INIT_SOURCE.isBlank()) {
+			// Generate founders from measured stable-state distributions and set
+			// the map food to its drawn-down level, instead of forest-only
+			// placement on a full-larder map.
+			this.environment.setInitialState(initState);
+			this.activeState = (BearState) initState;
+			agentsById = new HashMap<Integer, BearAgent>();
+			try {
+				BalancedInitializer init = new BalancedInitializer(
+						BalancedInitializer.load(java.nio.file.Path.of(Settings.BALANCED_INIT_SOURCE)));
+				lastAgentId = init.apply((BearState) initState, agentsById,
+						Settings.AGENTS_NUMBER_SINGLE_EXECUTION,
+						Bears.Experiments.RngSupport.environment());
+			} catch (java.io.IOException e) {
+				throw new RuntimeException("Failed to load characterization "
+						+ Settings.BALANCED_INIT_SOURCE + ": " + e.getMessage(), e);
+			}
+			System.out.println("Balanced init: " + agentsById.size() + " bears from "
+					+ Settings.BALANCED_INIT_SOURCE);
+		} else {
+			this.environment.setInitialState(initState);
+			this.activeState = (BearState) initState;
+			System.out.println("Creating bears...");
+			agentsById = new HashMap<Integer, BearAgent>();
+			lastAgentId = -1;
+
+			for (int i = 0; i < Settings.AGENTS_NUMBER_SINGLE_EXECUTION; i++) {
+				BearAgent bearAgent = new BearAgent(i);
+				lastAgentId = bearAgent.getId();
+				((BearEnvironment) this.environment).setAgentRandomCoords(bearAgent.getId()); // put agent on a random location on map
+				((BearEnvironment) this.environment).setAgentGender(bearAgent.getId(), bearAgent.getGender());
+				if (Settings.VERBOSE) {
+					System.out.println(bearAgent + " created.");
+				}
+				agentsById.put(bearAgent.getId(), bearAgent);
+			}
+			((BearState) initState).displayNoPrompt();
+			System.out.println("Bears created.");
 		}
 		int initialBearCount = agentsById.size();
-        ((BearState)initState).displayNoPrompt();
-
-		System.out.println("Bears created.");
 
 		// Record the founding cohort BEFORE any tick runs so the CSV exposes
 		// the initial gender split, founding-pregnancy count, etc.
@@ -117,6 +156,7 @@ public class BearSimulation extends Simulation {
 					benchmark.recordLoop(System.nanoTime() - loopStartNs);
 					tick++;
 					sampleMetricsForTick(tick);
+					if (maybeSaveSnapshot(tick)) break;
 				}
 			} else {
 				while (shouldContinue(endTimeMillis, maxTicks, tick)) {
@@ -135,6 +175,7 @@ public class BearSimulation extends Simulation {
 					commitActionsNoBenchmark(plannedActions);
 					tick++;
 					sampleMetricsForTick(tick);
+					if (maybeSaveSnapshot(tick)) break;
 				}
 			}
 
@@ -152,6 +193,31 @@ public class BearSimulation extends Simulation {
 		System.out.println("End bear count: " + agentsById.size());
 		printDeathCauseSummary();
         System.out.println("END of setup.");
+	}
+
+	/**
+	 * If a snapshot save is configured and the clock has reached the target
+	 * year, writes the snapshot and signals the loop to stop. Returns true when
+	 * the run should end (snapshot written).
+	 */
+	private boolean maybeSaveSnapshot(long tick) {
+		if (Settings.SNAPSHOT_SAVE_PATH == null || Settings.SNAPSHOT_SAVE_PATH.isBlank()) {
+			return false;
+		}
+		double simYear = tick * Settings.ONE_TICK_IN_YEARS;
+		if (simYear < Settings.SNAPSHOT_SAVE_AT_YEAR) {
+			return false;
+		}
+		try {
+			BearSnapshot.save(java.nio.file.Path.of(Settings.SNAPSHOT_SAVE_PATH),
+					activeState, agentsById, lastAgentId, tick);
+			System.out.printf(java.util.Locale.ROOT,
+					"Saved snapshot at year %.2f (%d bears) to %s%n",
+					simYear, agentsById.size(), Settings.SNAPSHOT_SAVE_PATH);
+		} catch (java.io.IOException e) {
+			throw new RuntimeException("Failed to save snapshot to " + Settings.SNAPSHOT_SAVE_PATH + ": " + e.getMessage(), e);
+		}
+		return true;
 	}
 
 	private void printDeathCauseSummary() {
