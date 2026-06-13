@@ -41,6 +41,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -111,6 +112,17 @@ public final class BatchRunnerUI extends JFrame {
     private final JCheckBox chartShowYearBoundariesCheckbox = new JCheckBox("Show year boundaries", true);
     private final Map<String, ChartSeriesData> chartSeriesByKey = new LinkedHashMap<>();
     private BatchRunner.BatchOutcome lastChartOutcome = null;
+
+    // Raw per-tick aggregates backing the charts (from a run OR an imported CSV),
+    // kept so time-step changes can re-bin without needing the original outcome.
+    private Map<Long, double[]> chartByTickPopulation = null;
+    private Map<Long, double[]> chartByTickBirths = null;
+    private Map<Long, double[]> chartByTickDeathsTotal = null;
+    private Map<DeathCause, Map<Long, double[]>> chartByTickDeathsByCause = null;
+    private int chartReplicateCount = 0;
+    // Source run_*.csv files backing the current charts (from a run or import),
+    // copied alongside the exported charts so the data can be re-imported later.
+    private List<java.io.File> chartSourceFiles = new ArrayList<>();
     private final JProgressBar runProgressBar = new JProgressBar(0, 1);
     private final JLabel progressStateValueLabel = new JLabel("Idle");
     private final JLabel progressReplicateValueLabel = new JLabel("- / -");
@@ -281,6 +293,17 @@ public final class BatchRunnerUI extends JFrame {
         top.add(chartShowSeasonsCheckbox);
         chartShowYearBoundariesCheckbox.addActionListener(e -> populationChartPanel.repaint());
         top.add(chartShowYearBoundariesCheckbox);
+
+        JButton exportAllButton = new JButton("Export all charts");
+        exportAllButton.setToolTipText("Choose a folder; exports every graph as PNG + CSV at the Year time step");
+        exportAllButton.addActionListener(e -> exportAllCharts());
+        top.add(exportAllButton);
+
+        JButton importButton = new JButton("Import run CSV");
+        importButton.setToolTipText("Load detailed per-tick run_*.csv file(s) to explore them like a fresh run (all graphs, all time steps)");
+        importButton.addActionListener(e -> importChartData());
+        top.add(importButton);
+
         initializeChartSelector();
 
         JTextArea hint = new JTextArea("This chart updates automatically after each scenario run. Use the dropdown to view population, births, total deaths, and deaths by cause.");
@@ -356,6 +379,248 @@ public final class BatchRunnerUI extends JFrame {
         populationChartPanel.setShowYearBoundaries(chartShowYearBoundariesCheckbox.isSelected());
     }
 
+    /**
+     * Exports every available graph at the Year time step to a user-chosen
+     * folder - each as both a PNG (the rendered figure) and a CSV (the data
+     * points). Uses the Year step regardless of the on-screen selection, and
+     * leaves the live chart untouched (renders to an offscreen panel).
+     */
+    private void exportAllCharts() {
+        if (chartByTickPopulation == null) {
+            showError("No chart data to export - run or import a scenario first.");
+            return;
+        }
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Choose a folder to export all charts (Year time step)");
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        java.io.File dir = chooser.getSelectedFile();
+
+        Map<String, ChartSeriesData> yearSeries = buildAllSeries(ChartTimeStep.YEAR);
+        if (yearSeries.isEmpty()) {
+            showError("No chart data to export.");
+            return;
+        }
+
+        // Render to an offscreen panel so the on-screen chart is not disturbed.
+        int w = Math.max(900, populationChartPanel.getWidth());
+        int h = Math.max(600, populationChartPanel.getHeight());
+        PopulationChartPanel exportPanel = new PopulationChartPanel();
+        exportPanel.setSize(w, h);
+        exportPanel.setChartTimeStep(ChartTimeStep.YEAR);
+        exportPanel.setShowSeasons(chartShowSeasonsCheckbox.isSelected());
+        exportPanel.setShowYearBoundaries(chartShowYearBoundariesCheckbox.isSelected());
+
+        int count = 0;
+        try {
+            if (!dir.exists()) {
+                Files.createDirectories(dir.toPath());
+            }
+            for (Map.Entry<String, ChartSeriesData> e : yearSeries.entrySet()) {
+                ChartSeriesData d = e.getValue();
+                String base = sanitizeFileName(e.getKey());
+
+                exportPanel.setBorder(BorderFactory.createTitledBorder(d.title));
+                exportPanel.setSeries(d.xValues, d.yValues, d.subtitle, d.xAxisSuffix, d.xTooltipLabel);
+                exportPanel.setSize(w, h);
+                BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+                Graphics2D g = img.createGraphics();
+                try {
+                    exportPanel.paint(g);
+                } finally {
+                    g.dispose();
+                }
+                ImageIO.write(img, "png", new java.io.File(dir, base + ".png"));
+                writeSeriesCsv(new java.io.File(dir, base + ".csv"), d);
+                count++;
+            }
+
+            // Copy the source run_*.csv files so the dataset can be re-imported later.
+            int copied = 0;
+            for (java.io.File src : chartSourceFiles) {
+                if (src == null || !src.exists()) {
+                    continue;
+                }
+                java.io.File dest = new java.io.File(dir, src.getName());
+                if (dest.getCanonicalPath().equals(src.getCanonicalPath())) {
+                    continue; // already in the target folder
+                }
+                Files.copy(src.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                copied++;
+            }
+
+            appendLog("Exported " + count + " charts (PNG + CSV, Year step) and copied "
+                    + copied + " run CSV file(s) to " + dir.getAbsolutePath());
+        } catch (Exception ex) {
+            showError("Failed to export charts: " + ex.getMessage());
+        }
+    }
+
+    private static void writeSeriesCsv(java.io.File file, ChartSeriesData data) throws IOException {
+        String xHeader = data.xTooltipLabel
+                + (data.xAxisSuffix.isBlank() ? "" : " (" + data.xAxisSuffix + ")");
+        List<String> header = List.of(xHeader, data.title);
+        List<List<String>> rows = new ArrayList<>();
+        int n = Math.min(data.xValues.size(), data.yValues.size());
+        for (int i = 0; i < n; i++) {
+            rows.add(List.of(
+                    String.format(Locale.ROOT, "%.6g", data.xValues.get(i)),
+                    String.format(Locale.ROOT, "%.6g", data.yValues.get(i))));
+        }
+        CsvWriter.writeRows(file.toPath(), header, rows);
+    }
+
+    private static String sanitizeFileName(String key) {
+        String base = key == null ? "chart" : key.replaceAll("[^A-Za-z0-9]+", "_").replaceAll("^_|_$", "");
+        return base.isBlank() ? "chart" : base;
+    }
+
+    /**
+     * Imports one or more detailed per-tick {@code run_*.csv} files (as written by
+     * BatchRunner) and rebuilds the charts from them, so they can be explored
+     * exactly like a fresh run - every graph type and every time step work,
+     * because the raw per-tick data is reconstructed. Multiple files are treated
+     * as replicates of one scenario (mean for population, sum for births/deaths).
+     */
+    private void importChartData() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Import per-tick run CSV(s)");
+        chooser.setMultiSelectionEnabled(true);
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        java.io.File[] files = chooser.getSelectedFiles();
+        if (files == null || files.length == 0) {
+            return;
+        }
+
+        Map<Long, double[]> pop = new TreeMap<>();
+        Map<Long, double[]> births = new TreeMap<>();
+        Map<Long, double[]> deathsTotal = new TreeMap<>();
+        Map<DeathCause, Map<Long, double[]>> deathsByCause = new LinkedHashMap<>();
+        for (DeathCause c : DeathCause.values()) {
+            deathsByCause.put(c, new TreeMap<>());
+        }
+
+        int loadedFiles = 0;
+        try {
+            for (java.io.File f : files) {
+                if (parseRunCsv(f, pop, births, deathsTotal, deathsByCause)) {
+                    loadedFiles++;
+                }
+            }
+        } catch (Exception ex) {
+            showError("Failed to import CSV: " + ex.getMessage());
+            return;
+        }
+
+        if (pop.isEmpty()) {
+            showError("No usable per-tick rows found. Import the detailed run_*.csv "
+                    + "(with tick/year/population columns), not the aggregated chart CSV.");
+            return;
+        }
+
+        chartByTickPopulation = pop;
+        chartByTickBirths = births;
+        chartByTickDeathsTotal = deathsTotal;
+        chartByTickDeathsByCause = deathsByCause;
+        chartReplicateCount = Math.max(1, loadedFiles);
+        chartSourceFiles = new ArrayList<>();
+        for (java.io.File f : files) {
+            chartSourceFiles.add(f);
+        }
+        lastChartOutcome = null;
+        renderChartSeries(getSelectedChartTimeStep());
+        appendLog("Imported " + loadedFiles + " run CSV file(s); " + pop.size() + " sampled ticks.");
+    }
+
+    /** Parses one detailed run CSV into the per-tick aggregate maps. Returns
+     *  false (without throwing) if the file is not a recognised run CSV. */
+    private boolean parseRunCsv(java.io.File file,
+                                Map<Long, double[]> pop,
+                                Map<Long, double[]> births,
+                                Map<Long, double[]> deathsTotal,
+                                Map<DeathCause, Map<Long, double[]>> deathsByCause) throws IOException {
+        List<String> lines = Files.readAllLines(file.toPath());
+        if (lines.size() < 2) {
+            return false;
+        }
+        String[] header = lines.get(0).split(",", -1);
+        int iTick = headerIndex(header, "tick");
+        int iYear = headerIndex(header, "year");
+        int iPop = headerIndex(header, "population");
+        int iBirths = headerIndex(header, "births");
+        int iDeathsTotal = headerIndex(header, "deathsTotal");
+        if (iTick < 0 || iYear < 0 || iPop < 0) {
+            return false; // not a per-tick run CSV
+        }
+        Map<DeathCause, Integer> causeCol = new LinkedHashMap<>();
+        for (DeathCause c : DeathCause.values()) {
+            causeCol.put(c, headerIndex(header, deathColumnName(c)));
+        }
+
+        for (int i = 1; i < lines.size(); i++) {
+            String line = lines.get(i);
+            if (line == null || line.isBlank()) {
+                continue;
+            }
+            String[] cols = line.split(",", -1);
+            if (cols.length <= iPop) {
+                continue;
+            }
+            try {
+                long tick = Long.parseLong(cols[iTick].trim());
+                double year = Double.parseDouble(cols[iYear].trim());
+                aggregateTickValue(pop, tick, year, Double.parseDouble(cols[iPop].trim()));
+                if (iBirths >= 0 && iBirths < cols.length) {
+                    aggregateTickValue(births, tick, year, parseDoubleSafe(cols[iBirths]));
+                }
+                if (iDeathsTotal >= 0 && iDeathsTotal < cols.length) {
+                    aggregateTickValue(deathsTotal, tick, year, parseDoubleSafe(cols[iDeathsTotal]));
+                }
+                for (DeathCause c : DeathCause.values()) {
+                    int ci = causeCol.get(c);
+                    if (ci >= 0 && ci < cols.length) {
+                        aggregateTickValue(deathsByCause.get(c), tick, year, parseDoubleSafe(cols[ci]));
+                    }
+                }
+            } catch (NumberFormatException ignored) {
+                // skip malformed row
+            }
+        }
+        return true;
+    }
+
+    private static int headerIndex(String[] header, String name) {
+        for (int i = 0; i < header.length; i++) {
+            if (header[i].trim().equalsIgnoreCase(name)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** Column name BatchRunner uses for a death cause, e.g. OLD_AGE -> "deathsOldAge". */
+    private static String deathColumnName(DeathCause cause) {
+        StringBuilder sb = new StringBuilder("deaths");
+        for (String p : cause.name().toLowerCase(Locale.ROOT).split("_")) {
+            if (p.isEmpty()) continue;
+            sb.append(Character.toUpperCase(p.charAt(0)));
+            if (p.length() > 1) sb.append(p.substring(1));
+        }
+        return sb.toString();
+    }
+
+    private static double parseDoubleSafe(String s) {
+        try {
+            return Double.parseDouble(s.trim());
+        } catch (NumberFormatException e) {
+            return 0.0;
+        }
+    }
+
     private ChartTimeStep getSelectedChartTimeStep() {
         ChartTimeStep selected = (ChartTimeStep) chartTimeStepCombo.getSelectedItem();
         return selected != null ? selected : ChartTimeStep.YEAR;
@@ -363,9 +628,10 @@ public final class BatchRunnerUI extends JFrame {
 
     private void refreshChartsForSelectedTimeStep() {
         ChartTimeStep selected = (ChartTimeStep) chartTimeStepCombo.getSelectedItem();
-        populationChartPanel.setChartTimeStep(selected != null ? selected : ChartTimeStep.YEAR);
-        if (lastChartOutcome != null && !lastChartOutcome.runResults.isEmpty()) {
-            updateCharts(lastChartOutcome);
+        ChartTimeStep ts = selected != null ? selected : ChartTimeStep.YEAR;
+        populationChartPanel.setChartTimeStep(ts);
+        if (chartByTickPopulation != null) {
+            renderChartSeries(ts);   // re-bin stored per-tick data (run or imported)
         } else {
             initializeChartSelector();
         }
@@ -1096,45 +1362,29 @@ public final class BatchRunnerUI extends JFrame {
             }
         }
 
-        int replicateCount = outcome.runResults.size();
-        String replicateSuffix = replicateCount == 1 ? "" : "s";
-        String perLabel = timeStep.perLabel;
-
-        chartSeriesByKey.clear();
-        chartSeriesByKey.put("Population", buildSeriesData(
-                "Population over time",
-                byTickPopulation,
-                String.format(Locale.ROOT, "Mean population (%d replicate%s, %s)", replicateCount, replicateSuffix, perLabel),
-            ChartAggregation.MEAN,
-                timeStep
-        ));
-        chartSeriesByKey.put("Births", buildSeriesData(
-                "Births over time",
-                byTickBirths,
-            String.format(Locale.ROOT, "Total births per %s (%d replicate%s)",
-                perLabel, replicateCount, replicateSuffix),
-            ChartAggregation.SUM,
-                timeStep
-        ));
-        chartSeriesByKey.put("Deaths (total)", buildSeriesData(
-                "Total deaths over time",
-                byTickDeathsTotal,
-            String.format(Locale.ROOT, "Total deaths per %s (%d replicate%s)",
-                perLabel, replicateCount, replicateSuffix),
-            ChartAggregation.SUM,
-                timeStep
-        ));
-        for (DeathCause cause : DeathCause.values()) {
-            String key = "Deaths (" + formatDeathCauseLabel(cause) + ")";
-            chartSeriesByKey.put(key, buildSeriesData(
-                    key + " over time",
-                    byTickDeathsByCause.get(cause),
-                String.format(Locale.ROOT, "Total deaths per %s (%s, %d replicate%s)",
-                    perLabel, formatDeathCauseLabel(cause), replicateCount, replicateSuffix),
-                ChartAggregation.SUM,
-                    timeStep
-            ));
+        chartByTickPopulation = byTickPopulation;
+        chartByTickBirths = byTickBirths;
+        chartByTickDeathsTotal = byTickDeathsTotal;
+        chartByTickDeathsByCause = byTickDeathsByCause;
+        chartReplicateCount = outcome.runResults.size();
+        chartSourceFiles = new ArrayList<>();
+        for (BatchRunner.RunResult rr : outcome.runResults) {
+            if (rr.runCsvPath != null) {
+                chartSourceFiles.add(rr.runCsvPath.toFile());
+            }
         }
+        renderChartSeries(timeStep);
+    }
+
+    /** Builds the chart series from the stored per-tick aggregates at the given
+     *  time step. Shared by live runs and imported CSV data. */
+    private void renderChartSeries(ChartTimeStep timeStep) {
+        if (chartByTickPopulation == null) {
+            initializeChartSelector();
+            return;
+        }
+        chartSeriesByKey.clear();
+        chartSeriesByKey.putAll(buildAllSeries(timeStep));
 
         String selected = (String) chartSelectorCombo.getSelectedItem();
         chartSelectorCombo.removeAllItems();
@@ -1147,6 +1397,40 @@ public final class BatchRunnerUI extends JFrame {
             chartSelectorCombo.setSelectedIndex(0);
         }
         refreshSelectedChart();
+    }
+
+    /** Builds all chart series (Population, Births, Deaths total/by cause) at the
+     *  given time step from the stored per-tick aggregates. */
+    private Map<String, ChartSeriesData> buildAllSeries(ChartTimeStep timeStep) {
+        Map<String, ChartSeriesData> series = new LinkedHashMap<>();
+        if (chartByTickPopulation == null) {
+            return series;
+        }
+        int rc = chartReplicateCount;
+        String suffix = rc == 1 ? "" : "s";
+        String per = timeStep.perLabel;
+
+        series.put("Population", buildSeriesData(
+                "Population over time", chartByTickPopulation,
+                String.format(Locale.ROOT, "Mean population (%d replicate%s, %s)", rc, suffix, per),
+                ChartAggregation.MEAN, timeStep));
+        series.put("Births", buildSeriesData(
+                "Births over time", chartByTickBirths,
+                String.format(Locale.ROOT, "Total births per %s (%d replicate%s)", per, rc, suffix),
+                ChartAggregation.SUM, timeStep));
+        series.put("Deaths (total)", buildSeriesData(
+                "Total deaths over time", chartByTickDeathsTotal,
+                String.format(Locale.ROOT, "Total deaths per %s (%d replicate%s)", per, rc, suffix),
+                ChartAggregation.SUM, timeStep));
+        for (DeathCause cause : DeathCause.values()) {
+            String key = "Deaths (" + formatDeathCauseLabel(cause) + ")";
+            series.put(key, buildSeriesData(
+                    key + " over time", chartByTickDeathsByCause.get(cause),
+                    String.format(Locale.ROOT, "Total deaths per %s (%s, %d replicate%s)",
+                            per, formatDeathCauseLabel(cause), rc, suffix),
+                    ChartAggregation.SUM, timeStep));
+        }
+        return series;
     }
 
     private static void aggregateTickValue(Map<Long, double[]> byTick, long tick, double simulationYear, double value) {
@@ -1703,13 +1987,7 @@ public final class BatchRunnerUI extends JFrame {
                     return;
                 }
 
-                g2.setColor(new Color(120, 120, 120));
-                g2.drawString(formatAxisValue(cg.maxY, cg.maxY - cg.minY), cg.left - 40, cg.top + 4);
-                g2.drawString(formatAxisValue(cg.minY, cg.maxY - cg.minY), cg.left - 40, cg.bottom + 4);
-                String minXText = formatValue(cg.minX, 1) + xAxisSuffix;
-                String maxXText = formatValue(cg.maxX, 1) + xAxisSuffix;
-                g2.drawString(minXText, cg.left, cg.bottom + 18);
-                g2.drawString(maxXText, cg.right - g2.getFontMetrics().stringWidth(maxXText), cg.bottom + 18);
+                drawAxes(g2, cg);
 
                 g2.setColor(new Color(50, 120, 220));
                 g2.setStroke(new BasicStroke(2f));
@@ -1774,7 +2052,7 @@ public final class BatchRunnerUI extends JFrame {
 
         private ChartGeometry buildGeometry() {
             Insets in = getInsets();
-            int left = in.left + 46;
+            int left = in.left + 54;
             int top = in.top + 24;
             int right = getWidth() - in.right - 16;
             int bottom = getHeight() - in.bottom - 34;
@@ -1908,6 +2186,73 @@ public final class BatchRunnerUI extends JFrame {
                 int px = toPixelX(cg, yearInOriginal);
                 g2.drawLine(px, cg.top, px, cg.bottom);
             }
+        }
+
+        /**
+         * Draws axis ticks and labels. For the Year and Month time steps it lays
+         * out several evenly-spaced, "nice"-numbered ticks on both axes (with
+         * light horizontal gridlines on the Y axis); for finer time steps it
+         * keeps just the min/max labels, since per-unit ticks would be unreadable.
+         */
+        private void drawAxes(Graphics2D g2, ChartGeometry cg) {
+            var fm = g2.getFontMetrics();
+            boolean detailed = currentTimeStep == ChartTimeStep.YEAR
+                    || currentTimeStep == ChartTimeStep.MONTH;
+            double yRange = cg.maxY - cg.minY;
+            double xRange = cg.maxX - cg.minX;
+
+            // ---- Y axis ----
+            if (detailed) {
+                double yStep = niceStep(yRange, 6);
+                if (yStep > 0) {
+                    double startY = Math.ceil(cg.minY / yStep) * yStep;
+                    for (double v = startY; v <= cg.maxY + yStep * 1e-6; v += yStep) {
+                        int py = toPixelY(cg, v);
+                        g2.setColor(new Color(232, 232, 232));
+                        g2.drawLine(cg.left + 1, py, cg.right, py);   // gridline
+                        g2.setColor(new Color(120, 120, 120));
+                        g2.drawLine(cg.left - 3, py, cg.left, py);    // tick
+                        String s = formatAxisValue(v, yRange);
+                        g2.drawString(s, cg.left - 6 - fm.stringWidth(s), py + 4);
+                    }
+                }
+            } else {
+                g2.setColor(new Color(120, 120, 120));
+                g2.drawString(formatAxisValue(cg.maxY, yRange), cg.left - 40, cg.top + 4);
+                g2.drawString(formatAxisValue(cg.minY, yRange), cg.left - 40, cg.bottom + 4);
+            }
+
+            // ---- X axis ----
+            if (detailed) {
+                int maxLabels = Math.max(2, cg.w / 46);           // keep labels ~46px apart
+                double xStep = Math.max(1.0, niceStep(xRange, maxLabels));
+                double startX = Math.ceil(cg.minX / xStep) * xStep;
+                g2.setColor(new Color(120, 120, 120));
+                for (double v = startX; v <= cg.maxX + xStep * 1e-6; v += xStep) {
+                    int px = toPixelX(cg, v);
+                    g2.drawLine(px, cg.bottom, px, cg.bottom + 3); // tick
+                    String s = formatValue(v, 0) + xAxisSuffix;
+                    int sw = fm.stringWidth(s);
+                    int sx = Math.max(cg.left, Math.min(px - sw / 2, cg.right - sw));
+                    g2.drawString(s, sx, cg.bottom + 16);
+                }
+            } else {
+                g2.setColor(new Color(120, 120, 120));
+                String minXText = formatValue(cg.minX, 1) + xAxisSuffix;
+                String maxXText = formatValue(cg.maxX, 1) + xAxisSuffix;
+                g2.drawString(minXText, cg.left, cg.bottom + 18);
+                g2.drawString(maxXText, cg.right - fm.stringWidth(maxXText), cg.bottom + 18);
+            }
+        }
+
+        /** Returns a readable tick interval (1, 2, 5 x 10^k) giving ~targetCount steps. */
+        private static double niceStep(double range, int targetCount) {
+            if (range <= 0 || targetCount <= 0) return 0;
+            double raw = range / targetCount;
+            double mag = Math.pow(10, Math.floor(Math.log10(raw)));
+            double norm = raw / mag;
+            double niceNorm = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+            return niceNorm * mag;
         }
 
         private static String formatAxisValue(double value, double range) {

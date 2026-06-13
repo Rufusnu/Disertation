@@ -52,10 +52,14 @@ public final class BatchRunner {
         public final RunConfig config;
         public final RunMetricsRecorder recorder;
         public final MetricsEvaluator.Result evaluation;
-        public RunResult(RunConfig config, RunMetricsRecorder recorder, MetricsEvaluator.Result evaluation) {
+        /** Path to the per-tick CSV written for this run (for later re-import). */
+        public final Path runCsvPath;
+        public RunResult(RunConfig config, RunMetricsRecorder recorder, MetricsEvaluator.Result evaluation,
+                         Path runCsvPath) {
             this.config = config;
             this.recorder = recorder;
             this.evaluation = evaluation;
+            this.runCsvPath = runCsvPath;
         }
     }
 
@@ -228,7 +232,7 @@ public final class BatchRunner {
         }
 
         RngSupport.clearSeed();
-        return new RunResult(runConfig, recorder, evaluation);
+        return new RunResult(runConfig, recorder, evaluation, runCsv);
     }
 
     private static void writePerTickCsv(Path path, List<TickMetrics> samples) throws IOException {
