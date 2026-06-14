@@ -1,6 +1,21 @@
 \newcommand{\etalchar}[1]{$^{#1}$}
 \begin{thebibliography}{LCRP{\etalchar{+}}05}
 
+\bibitem[BPP{\etalchar{+}}14]{Bocedi2014}
+Greta Bocedi, Stuart C.~F. Palmer, Guy Pe'er, Risto~K. Heikkinen, Yiannis~G. Matsinos, Kevin Watts, and Justin M.~J. Travis.
+\newblock Rangeshifter: A platform for modelling spatial eco-evolutionary dynamics and species responses to environmental changes.
+\newblock {\em Methods in Ecology and Evolution}, 5(4):388--396, 2014.
+
+\bibitem[BSY{\etalchar{+}}09]{Bischof2009}
+Richard Bischof, Jon~E. Swenson, Nigel~G. Yoccoz, Atle Mysterud, and Olivier Gimenez.
+\newblock The magnitude and selectivity of natural and multiple anthropogenic mortality causes in hunted brown bears.
+\newblock {\em Journal of Animal Ecology}, 78(3):656--665, 2009.
+
+\bibitem[CKL{\etalchar{+}}14]{Chapron2014}
+Guillaume Chapron, Petra Kaczensky, John D.~C. Linnell, Luigi Boitani, et~al.
+\newblock Recovery of large carnivores in europe's modern human-dominated landscapes.
+\newblock {\em Science}, 346(6216):1517--1519, 2014.
+
 \bibitem[CLBG15]{Carter2015}
 Neil~H. Carter, Simon Levin, Andrew Barlow, and Volker Grimm.
 \newblock Modeling tiger population and territory dynamics using an agent-based approach.
@@ -11,6 +26,11 @@ Nicholson Collier and Michael North.
 \newblock Parallel agent-based simulation with repast for high performance computing.
 \newblock {\em Simulation}, 89(10):1215--1235, 2013.
 
+\bibitem[DM05]{DeAngelis2005}
+Donald~L. DeAngelis and Wolf~M. Mooij.
+\newblock Individual-based modeling of ecological and evolutionary processes.
+\newblock {\em Annual Review of Ecology, Evolution, and Systematics}, 36:147--168, 2005.
+
 \bibitem[Fuj00]{Fujimoto2000}
 Richard~M. Fujimoto.
 \newblock {\em Parallel and Distributed Simulation Systems}.
@@ -20,6 +40,11 @@ Richard~M. Fujimoto.
 Volker Grimm, Uta Berger, Finn Bastiansen, Sondre Eliassen, Vincent Ginot, Jarl Giske, John Goss-Custard, Tamara Grand, Simone Heinz, Geir Huse, Andreas Huth, Jane~U. Jepsen, Christian Jorgensen, Wolf~M. Mooij, Birgit Muller, Guy Pe'er, Cyril Piou, Steven~F. Railsback, Andrew~M. Robbins, M.~Martha Robbins, Eva Rossmanith, Nadja Ruger, Espen Strand, Sami Souissi, Richard~A. Stillman, Rune Vabo, Ulf Visser, and Donald~L. DeAngelis.
 \newblock A standard protocol for describing individual-based and agent-based models.
 \newblock {\em Ecological Modelling}, 198(1--2):115--126, 2006.
+
+\bibitem[GMKH13]{Griffiths2013}
+Patrick Griffiths, Daniel Muller, Tobias Kuemmerle, and Patrick Hostert.
+\newblock Agricultural land change in the carpathian ecoregion after the breakdown of socialism and expansion of the european union.
+\newblock {\em Environmental Research Letters}, 8(4):045024, 2013.
 
 \bibitem[GR05]{GrimmRailsback2005}
 Volker Grimm and Steven~F. Railsback.
@@ -42,26 +67,66 @@ Sean Luke, Claudio Cioffi-Revilla, Liviu Panait, Keith Sullivan, and Gabriel Bal
 \newblock Mason: A multiagent simulation environment.
 \newblock {\em Simulation}, 81(7):517--527, 2005.
 
+\bibitem[Mac16]{Macal2016}
+Charles~M. Macal.
+\newblock Everything you need to know about agent-based modelling and simulation.
+\newblock {\em Journal of Simulation}, 10(2):144--156, 2016.
+
+\bibitem[McL89]{McLellan1989}
+Bruce~N. McLellan.
+\newblock Dynamics of a grizzly bear population during a period of industrial resource extraction. i. density and age-sex composition.
+\newblock {\em Canadian Journal of Zoology}, 67(8):1856--1860, 1989.
+
 \bibitem[{Min}24]{MMAP2024}
 {Ministerul Mediului, Apelor si Padurilor}.
 \newblock Planul national de actiune pentru conservarea populatiei de urs brun din romania.
 \newblock Government policy document, 2024.
 \newblock Romania.
 
+\bibitem[MK15]{Masad2015}
+David Masad and Jacqueline Kazil.
+\newblock Mesa: An agent-based modeling framework.
+\newblock In {\em Proceedings of the 14th Python in Science Conference}, pages 53--60. SciPy, 2015.
+
+\bibitem[MKB{\etalchar{+}}14]{Munteanu2014}
+Cristina Munteanu, Tobias Kuemmerle, Miroslav Boltiziar, Van Butsic, et~al.
+\newblock Forest and agricultural land change in the carpathian region: A meta-analysis of long-term patterns and drivers of change.
+\newblock {\em Land Use Policy}, 38:685--697, 2014.
+
+\bibitem[NCO{\etalchar{+}}13]{North2013}
+Michael~J. North, Nicholson~T. Collier, Jonathan Ozik, Eric~R. Tatara, Charles~M. Macal, Mark Bragen, and Pamela Sydelko.
+\newblock Complex adaptive systems modeling with repast simphony.
+\newblock {\em Complex Adaptive Systems Modeling}, 1:3, 2013.
+
 \bibitem[PBC{\etalchar{+}}18]{Pop2018}
 Maria~I. Pop, Lia Bereczky, Sorin Chiriac, Razvan Iosif, Andra Nita, Viorel~D. Popescu, and Laurentiu Rozylowicz.
 \newblock Movement ecology of brown bears (ursus arctos) in the romanian eastern carpathians.
 \newblock {\em Nature Conservation}, 26:15--31, 2018.
+
+\bibitem[PIP{\etalchar{+}}17]{Popescu2017}
+Viorel~D. Popescu, Razvan Iosif, Maria~I. Pop, Sorin Chiriac, George Buros, and Brian~J. Furnas.
+\newblock Integrating sign surveys and telemetry data for estimating brown bear (ursus arctos) density in the romanian carpathians.
+\newblock {\em Ecology and Evolution}, 7(18):7134--7144, 2017.
 
 \bibitem[RG19]{RailsbackGrimm2019}
 Steven~F. Railsback and Volker Grimm.
 \newblock {\em Agent-Based and Individual-Based Modeling: A Practical Introduction}.
 \newblock Princeton University Press, Princeton, 2nd edition, 2019.
 
+\bibitem[SEH{\etalchar{+}}12]{Steyaert2012}
+Sam M. J.~G. Steyaert, Anders Endrestol, Klaus Hacklander, Jon~E. Swenson, and Andreas Zedrosser.
+\newblock The mating system of the brown bear ursus arctos.
+\newblock {\em Mammal Review}, 42(1):12--34, 2012.
+
 \bibitem[SES{\etalchar{+}}98]{Saether1998}
 Bernt-Erik Saether, Steinar Engen, Jon~E. Swenson, Oivind Bakke, and Fredrik Sandegren.
 \newblock Assessing the viability of scandinavian brown bear, ursus arctos, populations: the effects of uncertain parameter estimates.
 \newblock {\em Oikos}, 83:403--416, 1998.
+
+\bibitem[SGDZ00]{Swenson2000}
+Jon~E. Swenson, Norbert Gerstl, Bjorn Dahle, and Andreas Zedrosser.
+\newblock Action plan for the conservation of the brown bear in europe (ursus arctos).
+\newblock Technical report, Council of Europe, Strasbourg, 2000.
 
 \bibitem[SMH03]{Schwartz2003}
 Charles~C. Schwartz, Sterling~D. Miller, and Mark~A. Haroldson.
@@ -82,5 +147,10 @@ Jon~E. Swenson, Fredrik Sandegren, Andreas Soderberg, Anders Bjarvall, Roger Fra
 Jan~C. Thiele, Winfried Kurth, and Volker Grimm.
 \newblock Facilitating parameter estimation and sensitivity analysis of agent-based models: A cookbook using netlogo and r.
 \newblock {\em Journal of Artificial Societies and Social Simulation}, 17(3):11, 2014.
+
+\bibitem[WR15]{WilenskyRand2015}
+Uri Wilensky and William Rand.
+\newblock {\em An Introduction to Agent-Based Modeling}.
+\newblock MIT Press, Cambridge, MA, 2015.
 
 \end{thebibliography}

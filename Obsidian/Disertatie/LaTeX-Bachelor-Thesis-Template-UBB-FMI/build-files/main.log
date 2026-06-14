@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.6.8)  14 JUN 2026 14:58
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.6.8)  14 JUN 2026 19:46
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -202,7 +202,9 @@ Package babel Info: Hyphen rules for 'australian' set to \l@ukenglish
 (babel)             (\language22). Reported on input line 105.
 Package babel Info: Hyphen rules for 'newzealand' set to \l@ukenglish
 (babel)             (\language22). Reported on input line 108.
-))) (c:/texlive/2026/texmf-dist/tex/latex/fancyhdr/fancyhdr.sty
+))) (c:/texlive/2026/texmf-dist/tex/latex/placeins/placeins.sty
+Package: placeins 2005/04/18  v 2.2
+) (c:/texlive/2026/texmf-dist/tex/latex/fancyhdr/fancyhdr.sty
 Package: fancyhdr 2025/02/07 v5.2 Extensive control of page headers and footers
 \f@nch@headwidth=\skip52
 \f@nch@offset@elh=\skip53
@@ -220,7 +222,7 @@ Package: fancyhdr 2025/02/07 v5.2 Extensive control of page headers and footers
 \f@nch@widthR=\skip65
 \@temptokenb=\toks21
 )
-LaTeX Font Info:    Trying to load font information for OT1+ppl on input line 18.
+LaTeX Font Info:    Trying to load font information for OT1+ppl on input line 19.
  (c:/texlive/2026/texmf-dist/tex/latex/psnfss/ot1ppl.fd
 File: ot1ppl.fd 2001/06/04 font definitions for OT1/ppl.
 ) (c:/texlive/2026/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
@@ -229,24 +231,24 @@ File: l3backend-pdftex.def 2026-02-18 L3 backend support: PDF output (pdfTeX)
 ) (build-files/main.aux)
 \openout1 = `main.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 18.
-LaTeX Font Info:    ... okay on input line 18.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 18.
-LaTeX Font Info:    ... okay on input line 18.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 18.
-LaTeX Font Info:    ... okay on input line 18.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 18.
-LaTeX Font Info:    ... okay on input line 18.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 18.
-LaTeX Font Info:    ... okay on input line 18.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 18.
-LaTeX Font Info:    ... okay on input line 18.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 18.
-LaTeX Font Info:    ... okay on input line 18.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 18.
-LaTeX Font Info:    ... okay on input line 18.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 18.
-LaTeX Font Info:    ... okay on input line 18.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 19.
+LaTeX Font Info:    ... okay on input line 19.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 19.
+LaTeX Font Info:    ... okay on input line 19.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 19.
+LaTeX Font Info:    ... okay on input line 19.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 19.
+LaTeX Font Info:    ... okay on input line 19.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 19.
+LaTeX Font Info:    ... okay on input line 19.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 19.
+LaTeX Font Info:    ... okay on input line 19.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 19.
+LaTeX Font Info:    ... okay on input line 19.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 19.
+LaTeX Font Info:    ... okay on input line 19.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 19.
+LaTeX Font Info:    ... okay on input line 19.
 
 *geometry* driver: auto-detecting
 *geometry* detected driver: pdftex
@@ -301,7 +303,7 @@ Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 48
  (c:/texlive/2026/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 ))
-Package hyperref Info: Link coloring OFF on input line 18.
+Package hyperref Info: Link coloring OFF on input line 19.
  (build-files/main.out) (build-files/main.out)
 \@outlinefile=\write3
 \openout3 = `main.out'.
@@ -309,13 +311,23 @@ Package hyperref Info: Link coloring OFF on input line 18.
  [1
 
 {c:/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{c:/texlive/2026/texmf-dist/fonts/enc/dvips/base/8r.enc}]
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <17.28> on input line 36.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <12> on input line 36.
+
 pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.31 \newpage
+l.36 \maketitle
+                [1]
+pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has been already used, duplicate ignored
+<to be read again> 
+                   \relax 
+l.43 \newpage
               [1]
-Overfull \hbox (0.24052pt too wide) in paragraph at lines 45--46
-\OT1/ppl/m/n/12 tion modes. A cen-tral tech-ni-cal find-ing is that for this fine-grained tick-synchronized
+Overfull \hbox (19.081pt too wide) in paragraph at lines 57--58
+\OT1/ppl/m/n/12 cal re-sults are eval-u-ated through base-line and coun-ter-fac-tual sce-nar-ios, us-ing trajectory-
  []
 
 
@@ -328,8 +340,6 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 [1
 
 ] (build-files/main.toc
-LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <12> on input line 3.
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <8> on input line 3.
 LaTeX Font Info:    External font `cmex10' loaded for size
@@ -354,14 +364,10 @@ Chapter 1.
 pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.21     \item t
-                o evaluate candidate drivers using baseline and counterfactu... [1
+l.11 
+      [1
 
 ]
-Overfull \hbox (11.88188pt too wide) in paragraph at lines 28--29
-\OT1/ppl/m/n/12 This the-sis adopts a fo-cused and ex-plicit scope. The study is de-fined as a \OT1/ppl/b/n/12 Transylvania-
- []
-
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 14.49998pt, for example:
@@ -370,14 +376,6 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
 [2]
-Overfull \hbox (0.27382pt too wide) in paragraph at lines 52--53
-[]\OT1/ppl/m/n/12 Fourth, the the-sis con-tributes a clear mod-elling scope state-ment that keeps claims
- []
-
-LaTeX Font Info:    Trying to load font information for TS1+ppl on input line 63.
-(c:/texlive/2026/texmf-dist/tex/latex/psnfss/ts1ppl.fd
-File: ts1ppl.fd 2001/06/04 font definitions for TS1/ppl.
-)) (./chapters/chapter2_background_related_work.tex
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 14.49998pt, for example:
@@ -385,26 +383,40 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
-[3]
+[3])
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[4] (./chapters/chapter2_background_related_work.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[5]
 Chapter 2.
 
-Overfull \hbox (0.60156pt too wide) in paragraph at lines 6--7
-\OT1/ppl/m/n/12 Brown bear ecol-ogy is a use-ful case for sim-u-la-tion be-cause pop-u-la-tion trends emerge
+Overfull \hbox (3.44267pt too wide) in paragraph at lines 8--9
+[]\OT1/ppl/m/n/12 From the de-mo-graphic lit-er-a-ture we know that brown bear tra-jec-to-ries are shaped
  []
 
-
-Overfull \hbox (7.7741pt too wide) in paragraph at lines 8--9
-[]\OT1/ppl/m/n/12 Demographic lit-er-a-ture shows that brown bear pop-u-la-tion tra-jec-to-ries are strongly
- []
-
-[4
+[6
 
 ]
-Overfull \hbox (7.50156pt too wide) in paragraph at lines 22--23
-\OT1/ppl/m/n/12 back-ground ex-am-ple. More pre-cisely, the em-pir-i-cal fram-ing is a Transylvania-focused
- []
 
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
+[7]
 Overfull \hbox (4.33022pt too wide) in paragraph at lines 24--25
 []\OT1/ppl/m/n/12 First, it pro-vides real-world con-straints. De-mo-graphic as-sump-tions, habi-tat struc-
  []
@@ -416,35 +428,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
-[5]
-Overfull \hbox (15.6255pt too wide) in paragraph at lines 55--56
-\OT1/ppl/m/n/12 chro-niza-tion is fre-quent, com-mu-ni-ca-tion over-head can re-duce or even re-verse speedup. 
- []
-
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 14.49998pt, for example:
-(fancyhdr)                \setlength{\headheight}{14.49998pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
-
-[6]) (./chapters/chapter3_proposed_approach.tex
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 14.49998pt, for example:
-(fancyhdr)                \setlength{\headheight}{14.49998pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
-
-[7]
-Chapter 3.
-[8
-
-]
-Overfull \hbox (5.00375pt too wide) in paragraph at lines 27--28
-[]\OT1/ppl/m/n/12 Mortality and re-pro-duc-tion are prob-a-bilis-tic but con-strained by bi-o-log-i-cal rules. 
- []
-
+[8]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 14.49998pt, for example:
@@ -453,6 +437,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
 [9]
+LaTeX Font Info:    Trying to load font information for TS1+ppl on input line 53.
+ (c:/texlive/2026/texmf-dist/tex/latex/psnfss/ts1ppl.fd
+File: ts1ppl.fd 2001/06/04 font definitions for TS1/ppl.
+)
+Overfull \hbox (1.66551pt too wide) in paragraph at lines 57--58
+[]\OT1/ppl/m/n/12 Stating this judge-ment ex-plic-itly, rather than re-flex-ively reach-ing for a dis-tributed
+ []
+
+) (./chapters/chapter3_proposed_approach.tex
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 14.49998pt, for example:
@@ -469,32 +462,13 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
 [11]
-Overfull \hbox (2.8441pt too wide) in paragraph at lines 121--122
-\OT1/ppl/m/n/12 A key ca-pa-bil-ity of the cur-rent im-ple-men-ta-tion is schedule-driven pa-ram-e-ter change.
- []
+Chapter 3.
+LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 8.
+(c:/texlive/2026/texmf-dist/tex/latex/psnfss/ot1pcr.fd
+File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
+) [12
 
-
-Overfull \hbox (2.13406pt too wide) in paragraph at lines 132--133
-[]\OT1/ppl/m/n/12 This mech-a-nism is cen-tral for the the-sis ob-jec-tive, be-cause the tar-get phe-nomenon
- []
-
-
-Overfull \hbox (0.71996pt too wide) in paragraph at lines 146--147
-[]\OT1/ppl/m/n/12 Tick syn-chro-niza-tion im-poses strict phase bound-aries that can limit dis-tributed
- []
-
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 14.49998pt, for example:
-(fancyhdr)                \setlength{\headheight}{14.49998pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
-
-[12]) (./chapters/chapter4_evaluation_validation.tex
-Overfull \hbox (0.87701pt too wide) in paragraph at lines 169--1
-\OT1/ppl/m/n/12 The next chap-ter val-i-dates this ap-proach through eco-log-i-cal and com-pu-ta-tional eval-
- []
-
+]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 14.49998pt, for example:
@@ -503,24 +477,14 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
 [13]
-Chapter 4.
-[14
 
-]
-Underfull \hbox (badness 1577) in paragraph at lines 41--42
-[]\OT1/ppl/m/n/12 No time-varying pol-icy/habitat driver be-
- []
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
-
-Overfull \hbox (22.93483pt too wide) in paragraph at lines 62--77
- [][] 
- []
-
-
-Overfull \hbox (5.51982pt too wide) in paragraph at lines 84--85
-[]\OT1/ppl/m/n/12 The com-bined re-al-is-tic sched-ule is very close to an-thro-pogenic food, but slightly
- []
-
+[14]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 14.49998pt, for example:
@@ -545,6 +509,10 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
 [17]
+Overfull \hbox (7.46506pt too wide) in paragraph at lines 83--83
+[]\OT1/ppl/b/n/17.28 Module-level ar-chi-tec-ture and the action--effects pat-
+ []
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 14.49998pt, for example:
@@ -552,11 +520,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
-[18]) (./chapters/chapter5_discussion_conclusion_future.tex
-Overfull \hbox (8.32964pt too wide) in paragraph at lines 165--1
-\OT1/ppl/m/n/12 level con-clu-sion about which mech-a-nisms are nec-es-sary to ap-proach ob-served growth
- []
-
+[18]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 14.49998pt, for example:
@@ -565,40 +529,244 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
 [19]
+Overfull \hbox (8.91437pt too wide) in paragraph at lines 97--98
+[]\OT1/ppl/m/n/12 The rea-son this works with-out any locks on the world is pre-cisely the plan/commit
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[20]
+Overfull \hbox (3.60085pt too wide) in paragraph at lines 111--112
+\OT1/ppl/m/n/12 A static model can-not rep-re-sent the ques-tion we are ask-ing, be-cause the phe-nomenon
+ []
+
+
+Overfull \hbox (1.99pt too wide) in paragraph at lines 113--114
+[]\OT1/ppl/m/n/12 The im-ple-men-ta-tion does this through re-flec-tion on the static \OT1/ppl/m/it/12 Set-tings \OT1/ppl/m/n/12 class, which
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[21]
+Overfull \hbox (2.34084pt too wide) in paragraph at lines 117--118
+\OT1/ppl/m/n/12 A prac-ti-cal prob-lem with start-ing ev-ery run from freshly gen-er-ated ran-dom founders
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[22]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[23]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[24]) (./chapters/chapter4_evaluation_validation.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[25]
+Chapter 4.
+[26
+
+]
+Underfull \hbox (badness 1577) in paragraph at lines 45--46
+[]\OT1/ppl/m/n/12 No time-varying pol-icy/habitat driver be-
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[27]
+Overfull \hbox (22.93483pt too wide) in paragraph at lines 68--83
+ [][] 
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[28]
+Overfull \hbox (36.814pt too wide) in paragraph at lines 87--88
+[]\OT1/ppl/m/n/12 The two food-driven sched-ules are in a com-pletely dif-fer-ent regime. The anthropogenic-
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[29]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[30]
+<figures/pop_baseline.png, id=534, 1167.36125pt x 631.35875pt>
+File: figures/pop_baseline.png Graphic file (type png)
+<use figures/pop_baseline.png>
+Package pdftex.def Info: figures/pop_baseline.png  used on input line 133.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+<figures/pop_eu2007.png, id=535, 1167.36125pt x 631.35875pt>
+File: figures/pop_eu2007.png Graphic file (type png)
+<use figures/pop_eu2007.png>
+Package pdftex.def Info: figures/pop_eu2007.png  used on input line 134.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+<figures/pop_huntingban2016.png, id=536, 1167.36125pt x 631.35875pt>
+File: figures/pop_huntingban2016.png Graphic file (type png)
+<use figures/pop_huntingban2016.png>
+Package pdftex.def Info: figures/pop_huntingban2016.png  used on input line 135.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+<figures/pop_cull2021.png, id=537, 1167.36125pt x 631.35875pt>
+File: figures/pop_cull2021.png Graphic file (type png)
+<use figures/pop_cull2021.png>
+Package pdftex.def Info: figures/pop_cull2021.png  used on input line 136.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+<figures/pop_habitatloss.png, id=538, 1167.36125pt x 631.35875pt>
+File: figures/pop_habitatloss.png Graphic file (type png)
+<use figures/pop_habitatloss.png>
+Package pdftex.def Info: figures/pop_habitatloss.png  used on input line 137.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+<figures/pop_anthropogenic.png, id=539, 1167.36125pt x 631.35875pt>
+File: figures/pop_anthropogenic.png Graphic file (type png)
+<use figures/pop_anthropogenic.png>
+Package pdftex.def Info: figures/pop_anthropogenic.png  used on input line 138.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+<figures/pop_combined.png, id=540, 1167.36125pt x 631.35875pt>
+File: figures/pop_combined.png Graphic file (type png)
+<use figures/pop_combined.png>
+Package pdftex.def Info: figures/pop_combined.png  used on input line 139.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+<figures/baseline_deaths_total.png, id=545, 1167.36125pt x 631.35875pt>
+File: figures/baseline_deaths_total.png Graphic file (type png)
+<use figures/baseline_deaths_total.png>
+Package pdftex.def Info: figures/baseline_deaths_total.png  used on input line 148.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+<figures/baseline_deaths_starvation.png, id=546, 1167.36125pt x 631.35875pt>
+File: figures/baseline_deaths_starvation.png Graphic file (type png)
+<use figures/baseline_deaths_starvation.png>
+Package pdftex.def Info: figures/baseline_deaths_starvation.png  used on input line 149.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+<figures/baseline_deaths_danger.png, id=547, 1167.36125pt x 631.35875pt>
+File: figures/baseline_deaths_danger.png Graphic file (type png)
+<use figures/baseline_deaths_danger.png>
+Package pdftex.def Info: figures/baseline_deaths_danger.png  used on input line 150.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+<figures/baseline_deaths_oldage.png, id=548, 1167.36125pt x 631.35875pt>
+File: figures/baseline_deaths_oldage.png Graphic file (type png)
+<use figures/baseline_deaths_oldage.png>
+Package pdftex.def Info: figures/baseline_deaths_oldage.png  used on input line 151.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+<figures/baseline_births.png, id=549, 1167.36125pt x 631.35875pt>
+File: figures/baseline_births.png Graphic file (type png)
+<use figures/baseline_births.png>
+Package pdftex.def Info: figures/baseline_births.png  used on input line 158.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+File: figures/baseline_deaths_total.png Graphic file (type png)
+<use figures/baseline_deaths_total.png>
+Package pdftex.def Info: figures/baseline_deaths_total.png  used on input line 159.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+<figures/anthropogenic_births.png, id=550, 1167.36125pt x 631.35875pt>
+File: figures/anthropogenic_births.png Graphic file (type png)
+<use figures/anthropogenic_births.png>
+Package pdftex.def Info: figures/anthropogenic_births.png  used on input line 160.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+<figures/anthropogenic_deaths_total.png, id=551, 1167.36125pt x 631.35875pt>
+File: figures/anthropogenic_deaths_total.png Graphic file (type png)
+<use figures/anthropogenic_deaths_total.png>
+Package pdftex.def Info: figures/anthropogenic_deaths_total.png  used on input line 161.
+(pdftex.def)             Requested size: 211.68661pt x 114.48744pt.
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[31]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[32 <./figures/pop_baseline.png (PNG copy)> <./figures/pop_eu2007.png (PNG copy)> <./figures/pop_huntingban2016.png (PNG copy)> <./figures/pop_cull2021.png (PNG copy)> <./figures/pop_habitatloss.png (PNG copy)> <./figures/pop_anthropogenic.png (PNG copy)> <./figures/pop_combined.png (PNG copy)>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[33 <./figures/baseline_deaths_total.png (PNG copy)> <./figures/baseline_deaths_starvation.png (PNG copy)> <./figures/baseline_deaths_danger.png (PNG copy)> <./figures/baseline_deaths_oldage.png (PNG copy)> <./figures/baseline_births.png (PNG copy)> <./figures/anthropogenic_births.png (PNG copy)> <./figures/anthropogenic_deaths_total.png (PNG copy)>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[34]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[35]) (./chapters/chapter5_discussion_conclusion_future.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[36]
 Chapter 5.
-
-Overfull \hbox (16.9651pt too wide) in paragraph at lines 20--21
-[]\OT1/ppl/m/n/12 Another im-por-tant in-ter-pre-ta-tion point is hori-zon sen-si-tiv-ity. The 2021 intervention-
- []
-
-[20
-
-]
-Overfull \hbox (2.98904pt too wide) in paragraph at lines 38--39
-\OT1/ppl/m/n/12 ob-served Ro-ma-nian tra-jec-tory re-quires in-creas-ing food avail-abil-ity over time. Policy-
- []
-
-
-Overfull \hbox (5.76031pt too wide) in paragraph at lines 49--50
-[]\OT1/ppl/m/n/12 Some late-window pol-icy ef-fects (es-pe-cially 2021 cull) re-quire extended-horizon
- []
-
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 14.49998pt, for example:
-(fancyhdr)                \setlength{\headheight}{14.49998pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
-
-[21]) (build-files/main.bbl
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 14.49998pt, for example:
-(fancyhdr)                \setlength{\headheight}{14.49998pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
-
-[22] [23
+[37
 
 ]
 
@@ -608,7 +776,11 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
-[24])
+[38]
+Overfull \hbox (1.04384pt too wide) in paragraph at lines 23--24
+[]\OT1/ppl/m/n/12 A prac-ti-cal and some-what un-usual com-pu-ta-tional re-sult for this class of model:
+ []
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 14.49998pt, for example:
@@ -616,27 +788,73 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
 
-[25] (build-files/main.aux)
+[39]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[40]) (build-files/main.bbl
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[41] [42
+
+]
+Underfull \hbox (badness 2285) in paragraph at lines 45--48
+[]\OT1/ppl/m/n/12 Patrick Grif-fiths, Daniel Muller, To-bias Kuem-merle, and Patrick
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[43]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[44])
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 14.49998pt, for example:
+(fancyhdr)                \setlength{\headheight}{14.49998pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-2.49998pt}.
+
+[45] (build-files/main.aux)
  ***********
 LaTeX2e <2026-06-01>
 L3 programming layer <2026-05-26>
  ***********
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: D9F715C1D42D5B028536699A8D9B8B50;8847.
+(rerunfilecheck)             Checksum: 7BBC4E3354E602077B532B8F31A1E721;11577.
  ) 
 Here is how much of TeX's memory you used:
- 10990 strings out of 467167
- 175889 string characters out of 5413692
- 620799 words of memory out of 5000000
- 39969 multiletter control sequences out of 15000+600000
- 641317 words of font info for 71 fonts, out of 8000000 for 9000
+ 11220 strings out of 467167
+ 181604 string characters out of 5413692
+ 623428 words of memory out of 5000000
+ 40158 multiletter control sequences out of 15000+600000
+ 643735 words of font info for 78 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 89i,11n,93p,877b,595s stack positions out of 10000i,1000n,20000p,200000b,200000s
-<c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb><c:/texlive/2026/texmf-dist/fonts/type1/urw/palatino/uplb8a.pfb><c:/texlive/2026/texmf-dist/fonts/type1/urw/palatino/uplr8a.pfb><c:/texlive/2026/texmf-dist/fonts/type1/urw/palatino/uplr8a.pfb><c:/texlive/2026/texmf-dist/fonts/type1/urw/palatino/uplri8a.pfb>
-Output written on build-files/main.pdf (30 pages, 144092 bytes).
+ 89i,11n,93p,1396b,590s stack positions out of 10000i,1000n,20000p,200000b,200000s
+<c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb><c:/texlive/2026/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb><c:/texlive/2026/texmf-dist/fonts/type1/urw/palatino/uplb8a.pfb><c:/texlive/2026/texmf-dist/fonts/type1/urw/palatino/uplr8a.pfb><c:/texlive/2026/texmf-dist/fonts/type1/urw/palatino/uplr8a.pfb><c:/texlive/2026/texmf-dist/fonts/type1/urw/palatino/uplri8a.pfb>
+Output written on build-files/main.pdf (51 pages, 1173273 bytes).
 PDF statistics:
- 496 PDF objects out of 1000 (max. 8388607)
- 449 compressed objects within 5 object streams
- 134 named destinations out of 1000 (max. 500000)
- 369 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 716 PDF objects out of 1000 (max. 8388607)
+ 623 compressed objects within 7 object streams
+ 164 named destinations out of 1000 (max. 500000)
+ 527 words of extra memory for PDF output out of 10000 (max. 10000000)
 

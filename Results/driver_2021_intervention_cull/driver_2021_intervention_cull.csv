@@ -1,0 +1,17 @@
+# DRIVER: 2021 - Intervention/cull law. After rising human-bear conflict and a
+# fatal attack, the Romanian Parliament approved legislation (2021) allowing the
+# shooting or relocation of "problem" bears that enter localities, reintroducing
+# lethal management via annual intervention quotas. This pushes human-caused
+# mortality back up after the 2016 ban.
+#
+# Modelled effect: a step increase in danger mortality from 2021. Calendar 2021
+# = simulation year 16 (the last year of the reference window).
+#
+# Baseline BEAR_DANGER_DEATH_RATE_PER_TICK = 0.0000187596
+# New value 0.0000244 ~= +30% (partial return of lethal management).
+#
+# NOTE: with the reference window ending in 2021, this driver mostly affects
+# projections *beyond* the comparison window - run the simulation a few years
+# past year 16 to see its effect.
+year,parameter,value
+16,BEAR_DANGER_DEATH_RATE_PER_TICK,0.0000244

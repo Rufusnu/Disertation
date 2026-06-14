@@ -3,74 +3,57 @@
 
 \section{Discussion}
 
-The final campaign results provide a clear practical ranking of explanatory power in the 2005--2021 validation window.
+Taken together, the results of the final campaign give a fairly clean ranking of explanatory power inside the 2005--2021 validation window, and it is a ranking that I find convincing precisely because the different pieces of evidence all agree with one another instead of pulling in different directions.
 
-Baseline and policy-only schedules (EU 2007 protection and 2016 hunting-ban reduction of danger mortality) improve fit only marginally relative to baseline. In contrast, schedules that increase food access over time produce a much stronger trajectory match.
+The baseline and the policy-only schedules, the 2007 EU protection and the 2016 hunting-ban reductions in danger mortality, improve the fit only marginally relative to the baseline. The schedules that increase food access over time, by contrast, produce a clearly stronger match to the observed trajectory. The single best scenario in the run set is anthropogenic food, with an MAE of 261.25 against 360.32 in the baseline, an RMSE of 336.27 against 539.66, and an end population of 7175 against the 7500 reference for 2021. The combined realistic schedule comes very close (MAE 278.64, RMSE 344.65, end population 7194.67) but does not actually beat anthropogenic food on aggregate error. That last point is more interesting than it first looks: the combined schedule contains the food increase \emph{and} the policy drivers, so the fact that adding the policies on top of the food does not improve the fit tells us that, in this parameterization, the food pathway is doing essentially all of the explanatory work, while the additional policy components contribute little or partly offset one another.
 
-The best single scenario in this run set is anthropogenic food:
+The reason behind this ranking becomes obvious once we look at the mortality structure. In the model, the overwhelming majority of deaths are from starvation, on the order of four hundred a year against only a few dozen from danger. The policy drivers act solely on danger mortality, which is the small component, so even a large relative cut to it can only recover a handful of bears. The food driver acts on the dominant component directly: more food means fewer bears starve, and at the same time more females clear the satiety requirement and reproduce. It pushes on the biggest lever in the system from both the death side and the birth side at once, which is exactly why it is the only mechanism in the campaign able to close most of the gap to the observed level. The year-by-year trajectory reinforces this with a believable lag: the food increase begins in year~5 but the curves do not visibly separate until around year~8, because more food converts into more bears only through the slow chain of better body condition, then more births, then surviving cubs, a chain that carries the long reproductive cycle of the species inside it.
 
-\begin{itemize}
-    \item MAE = 261.25 versus 360.32 in baseline,
-    \item RMSE = 336.27 versus 539.66 in baseline,
-    \item end population 7175 versus reference 7500 in 2021.
-\end{itemize}
-
-The combined realistic schedule is close (MAE 278.64, RMSE 344.65, end population 7194.67) but does not outperform anthropogenic food in aggregate error. This suggests that, in the current parameterization, the food pathway is the dominant contribution, while additional policy components either provide smaller gains or partially offset each other.
-
-Another important interpretation point is horizon sensitivity. The 2021 intervention-cull schedule is activated at simulation year 16, so its effect is expected mainly after the validated window. Its near-identity with baseline in 2005--2021 should therefore not be interpreted as a policy-ineffectiveness claim, but as a consequence of timing.
-
-The results also confirm the value of schedule-driven ABM for policy analysis: we can test not only whether growth occurs, but which timing and combination of drivers best reproduces observed trends.
+A second point worth dwelling on is horizon sensitivity, because it is easy to misread. The 2021 intervention-cull schedule is activated at simulation year~16, the very end of the comparison window, so within 2005--2021 it has essentially no time to act and comes out nearly identical to the baseline. This should not be read as ``culling does nothing''. It is purely a consequence of timing: the driver fires too late to express itself inside the validated window, and measuring its real effect would require extending the simulation past 2021. This is a good illustration of why a schedule-driven agent-based model is valuable for this kind of policy question in the first place: it lets us reason not only about whether a driver causes growth or decline, but about \emph{when} a driver is applied and how long it needs to take effect.
 
 \section{Conclusion}
 
-This thesis delivers both a modeling contribution and a data-backed empirical conclusion.
+This thesis set out to answer which mechanisms can best explain the increase of the Romanian brown bear population over 2005--2021, and to do so with a model that is reproducible and whose computational behaviour is understood rather than assumed. It delivers both a methodological contribution and a data-backed empirical conclusion.
 
 \subsection*{Methodological contribution}
 
 \begin{enumerate}
-    \item A spatial, agent-based brown-bear simulator with explicit demographic and environmental mechanisms.
-    \item A reproducible scenario pipeline (schedules, seeded replicates, annual post-processing, and quantitative fit metrics).
-    \item A practical workflow for comparing ecological hypotheses with controlled counterfactual experiments.
+    \item A spatial, agent-based brown bear simulator with explicit demographic and environmental mechanisms, age- and sex-structured mortality, satiety-gated reproduction with gestation and cooldown, variable litters with infant mortality, seasonal hibernation, subadult-male dispersal, and a food/danger landscape that the bears both consume and respond to.
+    \item A reproducible scenario pipeline built directly into the code: per-agent seeded randomness that survives parallel execution, time-indexed parameter schedules applied and audited through reflection, seeded replicates, spin-up via snapshots and balanced initialization, annual post-processing, and quantitative fit metrics.
+    \item A practical and somewhat unusual computational result for this class of model: the model is multithreaded on a single machine, and a distributed execution was deliberately not implemented, because the timing analysis shows that a fine-grained, tick-synchronised run would lose more to communication and synchronisation overhead than it could gain. Distribution would only make sense around a batch of independent runs, and at this scale a single machine made even that unnecessary.
 \end{enumerate}
 
 \subsection*{Empirical conclusion for 2005--2021}
 
-Within the tested scenarios and current calibration, population growth close to the observed Romanian trajectory requires increasing food availability over time. Policy-only danger-mortality adjustments are not sufficient by themselves to reproduce the magnitude of the rise.
-
-In short, the campaign supports a multi-driver interpretation where food-access dynamics are necessary and dominant in this model version.
+Within the tested scenarios and the current calibration, population growth close to the observed Romanian trajectory requires an increase in food availability over time. Policy-only adjustments to danger mortality are not, by themselves, sufficient to reproduce the magnitude of the rise. In short, the campaign supports a multi-driver interpretation in which food-access dynamics are both necessary and dominant in this version of the model. This is a comparative statement, made carefully and within stated assumptions, and it is exactly the kind of statement the scope of the thesis was designed to be able to support.
 
 \section{Limitations}
 
-The main limitations are:
+I would rather state the limitations plainly than have them found, because each of them marks the boundary of where the present work applies, not a flaw that undermines it.
 
 \begin{enumerate}
-    \item Scenario folders labeled as weird results indicate a remaining reproducibility check before publication-level attribution strength.
-    \item Validation uses one national annual reference trajectory; spatially explicit local validation is outside current scope.
-    \item Some late-window policy effects (especially 2021 cull) require extended-horizon runs for full impact quantification.
+    \item Two of the result folders, the anthropogenic-food and the combined-realistic outputs, are flagged in the data directory as needing a reproducibility recheck before they are used for publication-grade attribution, because of a possible pipeline contamination between two closely related scenarios. The comparative ranking is robust, but the precise error figures for those two scenarios should be re-confirmed under a strict, isolated protocol.
+    \item The validation uses a single national annual reference trajectory. Spatially explicit, local validation, checking that the model gets the right bears in roughly the right places, is outside the current scope, and a good fit to the national curve does not by itself guarantee a correct spatial pattern.
+    \item Some drivers, especially the late-window 2021 cull, are activated too near the end of the window to express their full effect, so their real impact can only be quantified with an extended horizon.
+    \item Several ecological processes are intentionally abstracted: food is a single scalar field rather than distinct food types with their own seasons, human--bear conflict is a proxy count of bears on village and road cells rather than a modelled human response, and there is no individual-quality or genetic variation between bears beyond age and sex.
 \end{enumerate}
 
-These limitations constrain claim strength but do not invalidate the comparative ranking observed in the current campaign.
+These limitations constrain the strength of the claims, but they do not invalidate the comparative ranking that the campaign produced, and most of them point directly at the next steps.
 
 \section{Future work}
 
-Future work should focus on five concrete directions.
+There are five directions in which I would take this work further, and they follow naturally from the limitations above.
 
 \begin{enumerate}
-    \item Run a post-2021 extension campaign (for example to 2026 or 2030) to measure delayed intervention-cull effects.
-    \item Recheck and rerun the anthropogenic-food and combined scenarios under a strict reproducibility protocol to eliminate possible pipeline contamination.
-    \item Add uncertainty envelopes (confidence bands over replicates) directly in the final trajectory figures.
-    \item Extend validation with additional anchors (for example independent genetic estimates) while keeping annual-series evaluation separate.
-    \item Add a dedicated benchmark rerun chapter appendix so ecological and computational conclusions are both tied to one final frozen code/data snapshot.
+    \item Run a post-2021 extension campaign, for example to 2026 or 2030, specifically to measure the delayed effect of the intervention-cull driver and of any other late-window policy, which the current window cannot capture.
+    \item Recheck and rerun the anthropogenic-food and combined scenarios under a strict, fully isolated reproducibility protocol, to rule out the possible pipeline contamination and to confirm the precise error figures.
+    \item Add uncertainty envelopes, confidence bands across replicates, directly onto the final trajectory figures, so that the comparison between scenarios is shown with its variability rather than as bare lines.
+    \item Extend the validation with additional anchors, for example independent genetic population estimates, while keeping the annual-series evaluation separate, so that the model is checked against more than one kind of data.
+    \item Add a dedicated benchmark appendix tied to one final, frozen code-and-data snapshot, so that the ecological and computational conclusions are both anchored to the exact same version of the system, and so that the multithreaded scaling (wall-clock time against agent count and core count) can be reported as hard numbers on specific hardware. If the experiment scale ever grew enough to justify it, the same appendix would be the place to prototype and measure a distributed batch layer and confirm in practice the cost-benefit argument made here.
 \end{enumerate}
 
-\section{Final practical remarks}
+Beyond these, the natural longer-term extensions are to enrich the environment, distinct food types with their own seasonality, a real loaded habitat grid for Romania's forest range instead of a statistical terrain mix, and to model the human side of conflict explicitly rather than as a proxy count.
 
-The thesis is now in a finishable state: numerical evidence is integrated, scenario ranking is explicit, and figure insertion points are prepared.
+\section{Final remarks}
 
-Final submission steps are straightforward:
-
-\begin{enumerate}
-    \item insert the exported graphs into the placeholders from Chapter 4,
-    \item cross-check all table values against the final exported CSVs,
-    \item compile and polish narrative consistency (captions, references, and appendix links to schedules/results).
-\end{enumerate}
+The thesis is in a complete state: the numerical evidence is integrated, the scenario ranking is explicit, and the result figures are in place. What remains before submission is mechanical rather than conceptual, that is cross-checking every table value against the final exported CSVs and a last pass over the narrative for consistency of captions, references and the links between the schedules and their results. The substance of the argument, ecological and computational alike, is already on the page.

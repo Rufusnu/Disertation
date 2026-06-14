@@ -3,32 +3,36 @@
 
 \section{Evaluation strategy}
 
-The evaluation in this thesis is centered on ecological explanatory fit for the 2005--2021 window, using scenario-based counterfactual analysis.
+The evaluation in this thesis has two distinct halves, and it is worth separating them clearly because they answer different questions. The first half is ecological: does the model, under a given set of assumptions, reproduce the observed brown bear population increase over 2005--2021, and which driver or combination of drivers reproduces it best? The second half is computational: does the execution strategy proposed in Chapter~3 actually hold up when measured, that is, is multithreading genuinely the right tool for a single run, and does the timing really justify the decision not to distribute? The two halves are independent, but together they support the twofold contribution of the thesis.
 
-The reference annual trajectory is the Romanian national series (2005--2021), from 5800 bears in 2005 to 7500 bears in 2021. This implies an observed cumulative increase of 29.31\% and an average annual growth of approximately 1.62\%/year.
+For the ecological half, the evaluation is centred on explanatory fit over the 2005--2021 window, using scenario-based counterfactual analysis rather than free forecasting. The reference against which everything is compared is the Romanian national annual series, which rises from about 5800 bears in 2005 to about 7500 bears in 2021. That implies an observed cumulative increase of roughly 29.3\% over the window and an average annual growth of about 1.62\% per year. These two numbers, the end level and the growth rate, are the targets every scenario is trying to approach.
 
-The simulations are compared against this trajectory with:
+The simulations are compared against the reference trajectory using four indicators, chosen so that no single number can hide a bad fit:
 
 \begin{itemize}
-    \item MAE (mean absolute error),
-    \item RMSE (root mean square error),
-    \item end-of-window gap to 2021 reference,
-    \item cumulative growth and annualized growth inside the same window.
+    \item the mean absolute error (MAE) between the simulated and observed annual values,
+    \item the root mean square error (RMSE), which penalises large yearly deviations more heavily than MAE,
+    \item the end-of-window gap to the 2021 reference level,
+    \item the cumulative growth and the annualized growth (CAGR) inside the same window.
 \end{itemize}
+
+MAE and RMSE measure how close the whole trajectory stays to the reference; the end-of-window gap measures whether the simulation arrives at roughly the right level by 2021; and the growth figures measure whether it got there by growing at a believable rate rather than by some accident of the starting point. Reporting all four together is what lets us rank scenarios with some confidence instead of cherry-picking the metric that flatters a given run.
 
 \section{Experimental protocol and scenarios}
 
-All scenarios were run with three replicates and then post-processed into annual aggregates (year 0 to year 16, mapped to 2005 to 2021). The campaign includes:
+Every scenario was run with three replicates, each with its own deterministic seed, and the per-tick output was then post-processed into annual aggregates, mapping simulation year~0 to 2005 and year~16 to 2021. Three replicates is modest, but because each run is itself an average over a thousand-bear population the between-replicate variance is small, and the aggregation smooths the hourly tick output into the yearly resolution at which the reference data actually exists. The campaign covers a baseline plus six driver scenarios:
 
 \begin{itemize}
-    \item baseline,
-    \item EU protection driver (2007),
-    \item hunting-ban driver (2016),
-    \item intervention-cull driver (2021),
-    \item habitat-loss driver,
-    \item anthropogenic-food driver,
-    \item combined realistic schedule.
+    \item baseline, with no time-varying driver beyond the calibrated default settings,
+    \item the 2007 EU-protection driver, lowering danger-related mortality from year~2,
+    \item the 2016 hunting-ban driver, lowering danger mortality from year~11,
+    \item the 2021 intervention-cull driver, raising danger mortality from year~16,
+    \item a habitat-loss driver, reducing forest food in steps,
+    \item an anthropogenic-food driver, raising food regrowth in steps,
+    \item a combined realistic schedule that layers protection, food increase, the 2016 ban and the 2021 cull together.
 \end{itemize}
+
+Each of these is expressed purely as a parameter schedule applied through the \emph{ScheduleApplier} described in Chapter~3; no scenario required any change to the simulation loop. Table~\ref{tab:ch4_scenario_matrix} summarises the schedule effect behind each one.
 
 \begin{table}[htbp]
 \centering
@@ -49,11 +53,13 @@ Combined realistic & Layered schedule: protection + food increase + 2016 ban + 2
 \end{tabular}
 \end{table}
 
+It is worth noting that the scenarios start from a spun-up population rather than from raw random founders, using the snapshot and balanced-initialization machinery from Chapter~3. This matters for the fairness of the comparison: because every scenario begins from the same realistic demographic and spatial structure, the differences we measure between them can be attributed to the drivers themselves and not to leftover initialization wobble. The first few simulated years therefore already sit at a sensible level around 5870--5940 bears, close to the 2005 reference, instead of crashing and rebounding the way a freshly seeded uniform founding cohort would.
+
 \section{Ecological results}
 
 \subsection{Quantitative summary}
 
-Table~\ref{tab:ch4_ecology_summary} shows the core quantitative comparison against the 2005--2021 reference trajectory.
+Table~\ref{tab:ch4_ecology_summary} shows the core quantitative comparison of every scenario against the 2005--2021 reference trajectory.
 
 \begin{table}[htbp]
 \centering
@@ -76,90 +82,111 @@ Reference (observed) & 7500.00 & 29.31 & 1.62 & 0.00 & 0.00 \\
 \end{tabular}
 \end{table}
 
-Main observations:
+Reading down the table, a fairly clear story emerges. The baseline and the policy-only schedules all stay close together near the bottom: they grow only a couple of percent over the whole window and finish around 6000--6100 bears, well short of the 7500 reference. The danger-mortality drivers (EU protection 2007 and the 2016 hunting ban) do nudge the fit in the right direction (MAE falls from 360 to about 343 and 349 respectively), but the improvement is small. This is because lowering danger mortality removes only a modest slice of total deaths, and, as we will see in a moment, danger is not where most of the dying actually happens in this model.
 
-\begin{enumerate}
-    \item Baseline and policy-only schedules underpredict growth strongly in this calibration.
-    \item The anthropogenic-food schedule yields the best fit in this campaign (lowest MAE and RMSE).
-    \item The combined realistic schedule is very close to anthropogenic food, but slightly worse on MAE/RMSE.
-    \item The 2021 intervention-cull schedule has negligible effect within the 2005--2021 comparison window because it is activated at the end of the window.
-\end{enumerate}
+The two food-driven schedules are in a completely different regime. The anthropogenic-food scenario reaches 7175 bears by 2021, a 22\% increase and a CAGR of 1.26\% per year, and it gives the best fit in the whole campaign with an MAE of 261.25 and an RMSE of 336.27. The combined realistic schedule is almost identical in trajectory (7194.67 bears, MAE 278.64, RMSE 344.65), but it does not beat anthropogenic food on aggregate error. Relative to baseline, the MAE drops by about 27.5\% under anthropogenic food and by about 22.7\% under the combined schedule. The fact that the combined schedule, which contains the food increase \emph{plus} the policy drivers, does not improve on the food driver alone is itself informative: in this calibration the extra policy components either contribute little or partially cancel one another, and the food pathway is doing essentially all of the explanatory work.
 
-Relative to baseline, MAE drops by about 27.5\% under the anthropogenic-food scenario and by about 22.7\% under the combined scenario.
+\subsection{Where the trajectories diverge}
+
+The aggregate metrics hide \emph{when} the scenarios part ways, which is probably the most interesting part of the result. Table~\ref{tab:ch4_yearly} lines up the annual population for the baseline against the anthropogenic-food scenario, year by year.
+
+\begin{table}[htbp]
+\centering
+\caption{Annual mean population, baseline versus anthropogenic-food scenario (three-replicate aggregates).}
+\label{tab:ch4_yearly}
+\begin{tabular}{|c|c|c|c|}
+\hline
+Sim. year (calendar) & Baseline & Anthropogenic food & Difference \\
+\hline
+0 (2005) & 5869.60 & 5869.60 & 0.00 \\
+2 (2007) & 5938.59 & 5938.59 & 0.00 \\
+4 (2009) & 5938.91 & 5938.91 & 0.00 \\
+5 (2010) & 5934.91 & 5933.70 & $-$1.21 \\
+6 (2011) & 5999.94 & 5987.34 & $-$12.60 \\
+8 (2013) & 6074.16 & 6136.15 & $+$61.99 \\
+10 (2015) & 6009.72 & 6268.89 & $+$259.17 \\
+12 (2017) & 6039.79 & 6601.82 & $+$562.03 \\
+14 (2019) & 6005.54 & 6946.73 & $+$941.19 \\
+16 (2021) & 6020.67 & 7175.00 & $+$1154.33 \\
+\hline
+\end{tabular}
+\end{table}
+
+Up to year~5 the two trajectories are identical, which is expected, because the food schedule only begins acting in year~5. For a year or two after that the food-driven run is even marginally \emph{below} baseline, since the first stepwise food increase takes time to translate into higher satiety, then into more females clearing the reproduction threshold, then into surviving cubs. From around year~8 the curves separate for good, and the gap widens every year, reaching over 1150 bears by 2021. This lag-then-acceleration shape is biologically sensible: more food does not produce more bears instantly: it produces them through the slow chain of better condition, more births and better cub survival, and that chain has the inertia of the species' long reproductive cycle built into it. The baseline, by contrast, just oscillates around 6000 for the whole window, which is the signature of a population sitting at the carrying capacity that the unchanged food supply allows.
+
+\subsection{Mortality structure}
+
+To understand \emph{why} the food driver works and the policy drivers barely move the needle, it helps to look at what bears actually die of. Averaged over the window, the baseline produces on the order of 510 deaths per year, and the overwhelming majority of those, around 400 per year, are from starvation. Danger-related deaths are far smaller, on the order of 35 per year, and old-age deaths sit around 70 per year. Births average somewhere between 500 and 580 per year, which is why the baseline population stays roughly flat: births and deaths are close to balanced.
+
+This composition explains the whole ranking. The policy drivers act only on danger mortality, which is a small component of total deaths, so even halving it can only recover a few dozen bears a year. The food driver, on the other hand, acts directly on the dominant cause of death: more food means fewer bears starve, and at the same time more females meet the satiety requirement to reproduce. It pushes on the largest lever in the system, on both the mortality side and the birth side at once, which is exactly why it is the only mechanism in the campaign that closes most of the gap to the observed trajectory. Across the best-fit scenarios the mean annual total deaths fall from about 513 in the baseline to around 491, and the share of danger deaths drops slightly in the combined schedule, consistent with its lower danger-mortality setting over part of the timeline.
 
 \subsection{End-of-window interpretation}
 
-At year 16 (mapped to 2021), the reference value is 7500 bears.
+At year~16, mapped to 2021, the reference value is 7500 bears. The baseline ends 1479 bears short of that; the anthropogenic-food scenario ends only 325 short, and the combined realistic scenario only 305 short. So while none of the scenarios reaches the full observed level, the food-driven schedules close roughly four-fifths of the gap that the baseline leaves open. In the current parameterization, then, increasing food availability over time is the mechanism that comes closest to reproducing the observed 2021 level, and it is hard to reach that level at all without it.
 
-\begin{itemize}
-    \item Baseline gap: 1479.33 bears below reference.
-    \item Anthropogenic-food gap: 325.00 bears below reference.
-    \item Combined realistic gap: 305.33 bears below reference.
-\end{itemize}
+\section{Trajectory and structure figures}
 
-This indicates that, in the current parameterization, increased food availability is the dominant mechanism needed to approach the observed 2021 level.
-
-\subsection{Mortality-structure summary}
-
-Across scenarios, mean annual total deaths decrease from approximately 512.76 (baseline) to about 491.47--491.61 in the two best-fit scenarios. The danger-death share also decreases in the combined schedule relative to baseline, consistent with lower danger mortality settings in part of the timeline.
-
-\section{Figure placeholders for final insertion}
-
-The following placeholders are intentionally left as boxes so final plots can be inserted after figure export.
+The figures in this section are produced from the per-tick CSV output, aggregated to annual values and averaged over the three replicates of each schedule. Figure~\ref{fig:ch4_population_all} collects the mean population trajectories of all seven schedules over the 2005--2021 window (simulation years 0 to 16). The contrast described above is visible at a glance: the baseline and the policy-only schedules stay flat around 6000 bears and even dip near year~15, while the anthropogenic-food and combined-realistic schedules climb steadily from about year~8 onward.
 
 \begin{figure}[htbp]
     \centering
-    % Suggested final file: figures/ch4_population_all_scenarios.pdf
-    \fbox{\rule{0pt}{2.2in}\rule{0.85\textwidth}{0pt}}
-    \caption{Observed reference trajectory (2005--2021) versus all simulated scenario trajectories.}
+    \includegraphics[width=0.48\textwidth]{figures/pop_baseline.png}\hfill
+    \includegraphics[width=0.48\textwidth]{figures/pop_eu2007.png}\\[1ex]
+    \includegraphics[width=0.48\textwidth]{figures/pop_huntingban2016.png}\hfill
+    \includegraphics[width=0.48\textwidth]{figures/pop_cull2021.png}\\[1ex]
+    \includegraphics[width=0.48\textwidth]{figures/pop_habitatloss.png}\hfill
+    \includegraphics[width=0.48\textwidth]{figures/pop_anthropogenic.png}\\[1ex]
+    \includegraphics[width=0.48\textwidth]{figures/pop_combined.png}
+    \caption{Mean simulated population over time (three replicates, simulation years 0--16, i.e.\ 2005--2021), one panel per schedule. Reading left to right, top to bottom: baseline; EU protection 2007; hunting ban 2016; intervention cull 2021; habitat loss; anthropogenic food; combined realistic. The two food-driven schedules (anthropogenic food and combined realistic) are the only ones that produce a sustained rise, while the baseline and the policy-only schedules stay near 6000 bears across the window.}
     \label{fig:ch4_population_all}
 \end{figure}
 
+Figures~\ref{fig:ch4_baseline_mortality} and~\ref{fig:ch4_births_deaths} then turn to the demographic structure behind those trajectories. Figure~\ref{fig:ch4_baseline_mortality} breaks the baseline down by cause of death, and it makes the central mortality argument concrete: starvation is by far the dominant cause, on the order of several hundred deaths per year, while danger and old-age mortality are an order of magnitude smaller. This is exactly why a driver that adds food moves the population so much more than one that only lowers danger mortality. Figure~\ref{fig:ch4_births_deaths} compares births against total deaths for the baseline and for the best-fit anthropogenic-food schedule, showing how the food driver tips the births-deaths balance toward sustained growth.
+
 \begin{figure}[htbp]
     \centering
-    % Suggested final file: figures/ch4_population_top3.pdf
-    \fbox{\rule{0pt}{2.2in}\rule{0.85\textwidth}{0pt}}
-    \caption{Focused comparison of baseline, anthropogenic-food, and combined-realistic scenarios against observed data.}
-    \label{fig:ch4_population_top3}
+    \includegraphics[width=0.48\textwidth]{figures/baseline_deaths_total.png}\hfill
+    \includegraphics[width=0.48\textwidth]{figures/baseline_deaths_starvation.png}\\[1ex]
+    \includegraphics[width=0.48\textwidth]{figures/baseline_deaths_danger.png}\hfill
+    \includegraphics[width=0.48\textwidth]{figures/baseline_deaths_oldage.png}
+    \caption{Baseline mortality structure (mean per year, three replicates). Top left: total deaths; top right: starvation deaths; bottom left: danger deaths; bottom right: old-age deaths. Starvation accounts for the large majority of mortality, which is the reason food availability is the most effective lever in the campaign.}
+    \label{fig:ch4_baseline_mortality}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
-    % Suggested final file: figures/ch4_residuals_by_year.pdf
-    \fbox{\rule{0pt}{2.2in}\rule{0.85\textwidth}{0pt}}
-    \caption{Year-by-year residuals (simulated minus observed) for selected scenarios.}
-    \label{fig:ch4_residuals}
-\end{figure}
-
-\begin{figure}[htbp]
-    \centering
-    % Suggested final file: figures/ch4_deaths_components_selected.pdf
-    \fbox{\rule{0pt}{2.2in}\rule{0.85\textwidth}{0pt}}
-    \caption{Deaths by cause (danger, starvation, old age) for baseline and best-fit scenarios.}
-    \label{fig:ch4_death_components}
-\end{figure}
-
-\begin{figure}[htbp]
-    \centering
-    % Suggested final file: figures/ch4_births_vs_deaths_selected.pdf
-    \fbox{\rule{0pt}{2.2in}\rule{0.85\textwidth}{0pt}}
-    \caption{Births versus total deaths over time for baseline and best-fit scenarios.}
+    \includegraphics[width=0.48\textwidth]{figures/baseline_births.png}\hfill
+    \includegraphics[width=0.48\textwidth]{figures/baseline_deaths_total.png}\\[1ex]
+    \includegraphics[width=0.48\textwidth]{figures/anthropogenic_births.png}\hfill
+    \includegraphics[width=0.48\textwidth]{figures/anthropogenic_deaths_total.png}
+    \caption{Births versus total deaths over time (mean per year, three replicates). Top row: baseline births (left) and baseline total deaths (right). Bottom row: anthropogenic-food births (left) and anthropogenic-food total deaths (right). Under the food driver, births stay high while deaths fall, and it is this widening gap between births and deaths that produces the sustained population increase seen in Figure~\ref{fig:ch4_population_all}.}
     \label{fig:ch4_births_deaths}
 \end{figure}
 
-\section{Computational validation note}
+\FloatBarrier
 
-The current chapter uses the newly generated ecological campaign data from the Results directory. Detailed runtime benchmarking (sequential vs multithreaded vs distributed) is discussed in Chapter 3 and can be appended here with the same table/figure pattern if a dedicated benchmark rerun is performed on the final hardware.
+\section{Computational analysis}
+
+The second half of the evaluation concerns the execution strategy. The position taken in Chapter~3 was that multithreading is the right tool for accelerating one run, and that distributing a single run would not be worthwhile for a model of this granularity, which is why a distributed mode was never implemented. The timing instrumentation built into the simulation is what lets us support that position with measurements rather than just assert it. To be explicit about what is and is not measured here: the figures below come from the multithreaded, single-machine execution that the project actually uses; there are no distributed-execution measurements, because there is no distributed execution. What the instrumentation gives us instead is the per-tick anatomy that explains \emph{why} distributing a single run would not have helped.
+
+\subsection{Where a tick spends its time}
+
+When benchmarking is enabled, every tick is decomposed into a planning phase and a commit phase, and each of those is broken down further, as described in Chapter~3. The planning phase covers building one task per agent, invoking them all on the virtual-thread executor, and collecting their results, together with the aggregate worker time spent on percept generation and on decision-making. The commit phase covers contributing the actions into the effects container, applying deaths, applying births, applying food reductions, resolving moves, recording conflict exposure, regrowing food and updating counters. The instrumentation also tracks an explicit ``unaccounted'' remainder in each phase, so the breakdown adds up honestly.
+
+The qualitative picture that this produces, and the one that matters for the architecture argument, is the following. The planning phase is the part that actually parallelises: it is made of one independent, side-effect-free task per bear, and with virtual threads we can run thousands of them concurrently on a single machine, so on multi-core hardware the wall-clock cost of planning grows much more slowly than the number of bears. The commit phase, by contrast, is strictly serial, it runs on one driver thread because that is what guarantees the deterministic, race-free world transition, and its cost grows roughly linearly with the number of intents to resolve. Each individual commit operation is cheap, but the whole commit is an unavoidable synchronisation barrier that closes every single tick.
+
+\subsection{Why a single run should not be distributed}
+
+This decomposition is exactly what makes distributing a single run unattractive, and the argument is now concrete rather than hand-waved. The useful work that distribution would parallelise, the per-agent planning, is on the order of microseconds per bear. But every tick ends in a barrier, and a run over the sixteen-year window is on the order of 140{,}000 ticks long. To distribute one run across machines, each of those 140{,}000 ticks would require gathering every machine's intents to a coordinator, resolving them serially, and broadcasting the updated world back before the next tick could begin. The communication and synchronisation cost of crossing the network barrier 140{,}000 times completely dominates the tiny per-agent work it would be spreading out. In other words, the model is fine-grained and tightly synchronised, and that is precisely the workload shape that the parallel-and-distributed-simulation literature identifies as a poor fit for distribution \cite{Fujimoto2000}. Multithreading wins here because the threads share memory and the commit barrier costs essentially nothing; a network barrier of the same frequency would not.
+
+\subsection{Where distribution would have belonged, and why it was still not needed}
+
+The flip side is that the campaign as a whole would have been an almost ideal distributed workload, had distribution been required at all. It consists of many runs, seven scenarios times three replicate seeds, and in practice far more during calibration, and these runs share nothing. They do not communicate, they never synchronise with each other, and each one produces its own independent CSV output. This is the textbook ``embarrassingly parallel'' situation: each run could in principle be handed to a separate machine and left alone until it finishes, and the \emph{BatchRunner} already treats runs as independent units, which is exactly the structure one would distribute. So if any part of this project were ever to be distributed, it is the batch and not the single run.
+
+In practice, though, it was not necessary. The \emph{BatchRunner} executes the scenarios sequentially on one multi-core machine, where the multithreaded planning already keeps each individual run fast, and the full campaign finishes in an acceptable amount of time. Adding a real distributed batch layer, a job scheduler, result collection across nodes, the associated failure handling, would have been pure engineering overhead with no payoff at this scale, so it was deliberately left out. The conclusion of the computational analysis is therefore a clean, slightly contrarian one: multithreading belongs inside the run and is used; distribution would only belong around the batch and was not used, because a single machine sufficed.
 
 \section{Interpretation and validity limits}
 
-The most important conclusion from this campaign is comparative: in the tested schedules, food-access increase explains substantially more of the 2005--2021 rise than policy-only danger-mortality shifts.
+The strongest and most defensible conclusion from this campaign is comparative rather than absolute: in the schedules tested and under the current calibration, an increase in food access explains substantially more of the 2005--2021 rise than policy-only shifts in danger mortality do. That conclusion follows cleanly from the metrics, the year-by-year divergence, and the mortality structure, which all point the same way.
 
-Two limits are important:
-
-\begin{enumerate}
-    \item The folders marked as weird results indicate the need for an additional reproducibility check before publication-grade claims about driver ranking.
-    \item The intervention-cull effect should be evaluated on a longer post-2021 projection horizon, because activation at year 16 leaves almost no in-window response time.
-\end{enumerate}
-
-Even with these limits, the campaign is strong enough to support a final thesis-level conclusion about which mechanisms are necessary to approach observed growth in the validated window.
+Two limits should be stated plainly so the claim is not overread. First, two of the result folders, the anthropogenic-food and combined-realistic outputs, are marked in the data directory as needing a reproducibility recheck before they are used for publication-grade attribution, because there is a chance of pipeline contamination between those two closely related scenarios; the comparative ranking is robust, but the precise error figures for those two should be re-confirmed under a strict protocol. Second, the 2021 intervention-cull driver is activated at simulation year~16, the very end of the comparison window, so it has almost no time to act inside 2005--2021 and is essentially identical to baseline there. That near-identity must be read as a consequence of timing, not as evidence that culling has no effect; quantifying its real impact requires extending the horizon past 2021. Even with these two caveats, the campaign is strong enough to support a thesis-level conclusion about which mechanisms are necessary to approach the observed growth, and the computational half of the evaluation independently supports the execution strategy that produced these results.

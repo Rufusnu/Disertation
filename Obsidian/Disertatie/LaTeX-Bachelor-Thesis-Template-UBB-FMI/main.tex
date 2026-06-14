@@ -3,11 +3,12 @@
 
 % language may be romanian or english (default is english)
 % type may be bachelor or master (default is bachelor)
-\usepackage[language=english, type=bachelor]{style}
+\usepackage[language=english, type=master]{style}
 
 %\geometry{a4paper,top=2.5cm,left=3cm,right=2.5cm,bottom=2.5cm}
 %in style
 %controlling the appearance of your headers and footers
+\usepackage{placeins} % \FloatBarrier: keep figures within their section
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \lhead{}
@@ -17,12 +18,23 @@
 
 \begin{document}
 
-\specialization{Mathematics and Computer Science}	
-\title{Agent-Based Modelling of Brown Bear Population Dynamics in the Romanian Carpathians}					   
-\author{[Student name]}											
-\supervisor{[Degree, title and supervisor name]}	
-				
+% English title page (language of the specialization)
+\specialization{High Performance Computing and Big Data Analytics}
+\title{Agent-Based Modelling of Brown Bear Population Dynamics in the Romanian Carpathians}
+\author{Sofian Razvan}
+\supervisor{Dr. NICULESCU Virginia, Conferentiar Universitar}
+
 \maketitle
+
+% Romanian title page (required by the faculty guide)
+\setbool{@eng}{false}
+\specialization{Calcul de înaltă performanţă şi analiza volumelor mari de date}
+\title{Modelare bazat\u a pe agen\c ti a dinamicii popula\c tiei de urs brun din Carpa\c tii Rom\^aniei}
+\author{Sofian Razvan}
+\supervisor{Dr. NICULESCU Virginia, Conferentiar Universitar}
+
+\maketitle
+\setbool{@eng}{true}
 
 
 \newpage
@@ -38,13 +50,13 @@ ABSTRACT
 \vspace{0.5cm}	
 %\cleardoublepage
 
-Brown bear population dynamics in Romania represent both an ecological and a public-policy challenge. This thesis develops a spatial agent-based simulation focused on a Transylvania case study inside the Romanian Carpathians and uses it to investigate the population increase observed in the 2005--2021 interval. The objective is explanatory and counterfactual: to compare plausible driver combinations under explicit assumptions, not to produce exact deterministic forecasts.
+Brown bear population dynamics in Romania represent both an ecological and a public-policy challenge. This thesis develops a spatial agent-based simulation of the brown bear population across Romania's forests and uses it to investigate the population increase observed in the 2005--2021 interval. The objective is explanatory and counterfactual: to compare plausible driver combinations under explicit assumptions, not to produce exact deterministic forecasts.
 
 The model represents each bear as an autonomous agent with age, sex, satiety, reproduction, and movement behaviour, while the environment is represented as a heterogeneous grid with food and danger dynamics. The simulation architecture separates a parallel planning phase from a deterministic commit phase, and is supported by a reproducible experiment pipeline including seeded runs, schedule-driven parameter updates, and per-tick metrics recording.
 
-The thesis combines ecological validation and computational validation. Ecological results are evaluated through baseline and counterfactual scenarios, using trajectory-fit and population-structure indicators. In the final 2005--2021 campaign, the best fit is obtained by the anthropogenic-food schedule (MAE 261.25, RMSE 336.27), while baseline and policy-only schedules remain substantially less accurate. Computational results compare sequential, multithreaded, and distributed execution modes. A central technical finding is that for this fine-grained tick-synchronized model, distributed execution inside a single run can be dominated by communication and synchronization overhead, while distributed execution is effective for large batches of independent runs.
+The thesis combines ecological validation and computational analysis. Ecological results are evaluated through baseline and counterfactual scenarios, using trajectory-fit and population-structure indicators. In the final 2005--2021 campaign, the best fit is obtained by the anthropogenic-food schedule (MAE 261.25, RMSE 336.27), while baseline and policy-only schedules remain substantially less accurate. On the computational side, the model is executed with a multithreaded, single-machine design that parallelizes the per-agent planning phase, and built-in timing instrumentation is used to analyse where each tick spends its time. A distributed execution was deliberately not implemented: the analysis shows that for this fine-grained, tick-synchronized model the per-agent work is too small and the per-tick synchronization too frequent for distributing a single run to be worthwhile, because communication and synchronization overhead would dominate the useful work. The only level at which distribution would make sense is a batch of fully independent runs, but at the scale of these experiments a single multi-core machine was sufficient, so distribution was not needed.
 
-Overall, the contribution is twofold: a practical ABM framework for hypothesis testing in brown bear population dynamics, and an evidence-based execution strategy that aligns model granularity with computational design.
+Overall, the contribution is twofold: a practical ABM framework for hypothesis testing in brown bear population dynamics, and a reasoned, instrumentation-backed execution strategy that aligns model granularity with computational design.
 
 
 

@@ -1,0 +1,17 @@
+# DRIVER: Habitat degradation from logging (2005-2021). Romania saw extensive
+# legal and illegal logging of Carpathian forest over the period, reducing the
+# extent and quality of natural bear habitat and its wild food (beech mast,
+# acorns, berries). This is a counter-driver: it should depress the population,
+# isolating how much of the observed rise survives habitat loss.
+#
+# Modelled effect: a gradual stepwise reduction in forest food quality. Steps at
+# calendar 2008 (year 3), 2014 (year 9) and 2019 (year 14).
+#
+# Baseline FOREST_AVG_FOOD = 0.6
+#   year 3  -> 0.57  (-5%)
+#   year 9  -> 0.54  (-10%)
+#   year 14 -> 0.51  (-15%)
+year,parameter,value
+3,FOREST_AVG_FOOD,0.57
+9,FOREST_AVG_FOOD,0.54
+14,FOREST_AVG_FOOD,0.51

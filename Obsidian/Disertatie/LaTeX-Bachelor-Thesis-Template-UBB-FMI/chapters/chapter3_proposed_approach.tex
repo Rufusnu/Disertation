@@ -3,167 +3,148 @@
 
 \section{Model overview}
 
-The proposed solution is implemented as a spatial agent-based simulation in Java. Time is represented in discrete ticks, and one tick corresponds to a fixed fraction of a simulated year. This design allows direct control over simulation horizon and direct comparison between short-term and long-term behaviour.
+The proposed solution is a spatial agent-based simulation written in Java, in which every brown bear in the studied area is represented as one individual software agent that lives, eats, moves, reproduces and eventually dies inside a shared, heterogeneous world. The choice of an agent-based model is not accidental. The phenomenon we are trying to understand, namely the increase of the Romanian brown bear population during 2005--2021, is the cumulative result of a very large number of small, local decisions: a single bear deciding whether to look for food, a single female deciding whether the conditions are good enough to reproduce, a single subadult male leaving the area where it was born. None of these decisions is interesting on its own, but together, repeated over many thousands of individuals and many simulated years, they produce the population trend that we actually observe in the field. The whole point of building the model this way is that the population trajectory is never written down anywhere in the code. It is an \emph{emergent} property, and this is exactly what we want, because it lets us ask whether a given combination of assumptions is able to reproduce the real trend without us forcing the answer by hand.
 
-Each bear is modelled as an autonomous software agent with internal state and local decision logic. At population level, global behaviour is not hard-coded. It appears as an emergent result of local interactions, resource constraints, and stochastic events.
+Time in the simulation is discrete and advances in equal ticks. One tick corresponds to a fixed fraction of a simulated year, and in the current calibration one tick is set to \texttt{0.0001140771} years, which is approximately one hour. This means a full simulated year is built out of roughly 8766 ticks, and the 2005--2021 window of sixteen years is therefore around 140{,}000 ticks long. Working at an hourly resolution may look excessive for a population-level question, but it is a deliberate decision: it lets behaviours such as feeding, daily movement and the slow decay of body condition play out at a believable pace, instead of being collapsed into one coarse yearly update where everything happens at once.
 
-At each tick, the model follows a two-stage flow:
+At each tick, the model follows a two-stage flow, which is one of the most important design decisions of the whole project:
 
 \begin{enumerate}
-    \item \textbf{Plan stage:} each agent observes its local environment and decides an action.
-    \item \textbf{Commit stage:} all action effects are applied to the shared world state.
+    \item \textbf{Plan stage:} every agent looks at its own local surroundings, receives a percept, and decides on exactly one action for this tick. No agent is allowed to change the world during this stage. It only decides.
+    \item \textbf{Commit stage:} all the decided actions are collected and then applied to the shared world in one controlled, ordered pass on a single thread.
 \end{enumerate}
 
-This separation is central for correctness and performance. Correctness is improved because all state modifications are applied in one controlled phase, while performance is improved because independent decisions are computed in parallel.
+This separation between deciding and acting is what makes the rest of the architecture possible. Because nobody modifies the world while everybody is still thinking, the planning stage is free of data races and can be run in parallel across many threads without any locking on the world state. And because all the modifications are funnelled through one ordered commit, the resulting world transition is deterministic and easy to reason about. We will come back to this idea several times in this chapter, because almost every other design choice depends on it.
 
 \section{Problem formulation and modelling assumptions}
 
-The modelling objective is to evaluate plausible explanations for observed population increase under controlled computational experiments. In order to keep the model interpretable and executable, several assumptions are introduced.
+Before describing the implementation in detail, it is worth stating clearly what kind of model this is and what it is not. The modelling objective is explanatory and counterfactual: we want to compare plausible explanations for the observed population increase under controlled, repeatable computational experiments. We are not trying to produce an exact deterministic forecast of how many bears Romania will have in a given future year, because the available census and policy data simply do not support that level of precision. What the model \emph{can} do well is answer a comparative question, of the form ``under these assumptions, does this driver, alone or combined with others, reproduce the observed trend better than that one?''.
+
+In order to keep the model both interpretable and actually executable for large batches of runs, several assumptions are introduced, and it is worth listing them so the reader knows where the simplifications are:
 
 \begin{itemize}
-    \item The world is represented as a regular grid with local neighbourhood interactions.
-    \item Time advances in equal discrete ticks.
-    \item Agent perception is local, not global.
-    \item Mortality and reproduction are probabilistic but constrained by biological rules.
-    \item Environment dynamics are represented by food/danger fields and terrain categories.
+    \item the world is a regular two-dimensional grid, and interactions are local, restricted to a small neighbourhood around each agent;
+    \item time advances in equal discrete ticks, with no continuous-time events between ticks;
+    \item each agent perceives only its immediate surroundings, never the global state of the population;
+    \item mortality and reproduction are probabilistic, but the probabilities are bounded by biological rules (minimum reproductive age, gestation, cooldown, litter limits);
+    \item the environment is abstracted into food and danger fields layered on top of a small set of terrain categories.
 \end{itemize}
 
-These assumptions do not claim perfect realism. Their role is to balance biological plausibility with experiment reproducibility.
+None of these assumptions claims perfect realism, and I do not want to pretend otherwise. Their role is to strike a balance between biological plausibility on one side and reproducibility and computational tractability on the other. A model that is too detailed becomes impossible to calibrate and impossible to run thousands of times; a model that is too coarse stops being biologically meaningful. The assumptions above are the compromise that this thesis settled on, and the parameter values behind them are, wherever possible, tied to the demographic literature rather than chosen arbitrarily \cite{Swenson2000,Schwartz2003}.
 
 \section{Agent state and behaviour}
 
-Each bear agent maintains attributes such as age, sex, satiety, pregnancy state, gestation progression, home-range anchor, and reproduction cooldown. Because of this, survival and reproduction are both state-dependent and time-dependent.
+Each bear agent is implemented in the \emph{BearAgent} class and carries a compact internal state. The fields that matter for behaviour are the bear's identity, its sex, its age in years, its satiety, its reproduction cooldown, its gestation progress, whether it is currently pregnant, and a remembered home-range anchor expressed as a pair of coordinates. It is important to notice that the agent does not store its own position on the map. The position lives in the world state, not in the agent, which keeps a clean separation between ``who the bear is'' and ``where the bear is'', and turns out to be very convenient when we save and restore whole populations later.
 
-The main behavioural outcomes include:
+\subsection{The decision pipeline}
 
-\begin{itemize}
-    \item starvation and old-age mortality,
-    \item danger-related probabilistic mortality,
-    \item hunger-driven feeding behaviour,
-    \item local movement under food/danger/crowding/home-range trade-offs,
-    \item pregnancy and birth events under biological constraints.
-\end{itemize}
+The heart of the agent is the method that decides the next action, and it is best described as a short pipeline that is evaluated in a fixed order at every tick. The order is meaningful, because the first condition that matches wins and the rest are skipped.
 
-The model includes seasonal effects through a hibernation window. During hibernation, metabolism and risk multipliers are modified, and active behaviours are reduced. This mechanism helps align the simulation with known brown-bear seasonal ecology.
+The very first thing that happens each tick is the passage of time. The agent ages by one tick, its reproduction cooldown and remaining gestation are both decremented, and its satiety decays. Only after time has passed do we check whether the bear has died. Death from starvation comes first: if satiety has reached zero, the agent decides to die with cause \texttt{STARVATION}. Next comes old age: once a bear is older than the configured maximum age, every tick it rolls against a small per-tick death probability, scaled by a sex-specific multiplier because in the model, as in reality, females are slightly longer-lived than males. After that comes danger: the danger value of the cell the bear currently stands on is turned into a per-tick probability of dying, and this probability is multiplied by several factors: a large multiplier for cubs, who are far more vulnerable, a sex multiplier because roaming males are more exposed, and a strong reduction during hibernation because a denned bear is sheltered.
 
-In addition, initialization logic avoids unrealistic synchronization artifacts by staggering initial female reproductive states. This is important because synchronized founding cohorts can create artificial birth waves unrelated to ecological behaviour.
+If the bear survives all three mortality checks, the pipeline turns to reproduction and behaviour. A pregnant female whose gestation has finished gives birth, resets her cooldown and clears her pregnancy. If the bear is hibernating, the pipeline stops here: a denned bear does not forage, does not move and does not mate, although births can still happen in the den. Outside hibernation, an eligible female that perceives a male nearby becomes pregnant and starts her gestation clock. Then comes feeding: a hungry bear, meaning one whose satiety is below an eat-preference threshold, eats immediately if there is enough food on its current tile. If the bear is not hungry enough to eat in place, it evaluates its neighbouring cells and moves to the best one, provided that cell is actually better than staying put. And if there is no better neighbour but there is food where it stands, it eats anyway; otherwise it simply does nothing and waits for the next tick.
+
+It is worth mentioning that this ordering is itself a modelling decision. By putting survival before reproduction and reproduction before feeding and movement, the agent expresses a simple priority: stay alive, then continue the species, then take care of daily needs. It is a deliberately reactive design rather than a planning one, because for a population-level question we care about the statistical behaviour of many bears, not about any single bear executing a clever long-term plan.
+
+\subsection{Movement as a weighted trade-off}
+
+Movement deserves its own discussion, because it is where most of the spatial realism of the model comes from. When a bear is not eating in place, it looks at the eight cells around it (a Moore neighbourhood) and gives each candidate cell a score. The cell with the highest score wins, and the bear moves there unless its current cell already scores best. The score is a weighted combination of four ingredients: the food on the cell pulls the bear in, the danger on the cell pushes it away, the local crowding (how many other bears are nearby) pushes it away, and a home-range penalty discourages the bear from wandering too far from the anchor point it remembers. A small amount of random noise is also added, so that bears do not behave like perfectly identical optimisers and the movement looks more natural.
+
+The really interesting part is that the weights are not constant: they shift depending on how hungry the bear is. A well-fed bear weighs danger heavily and food lightly, so it behaves cautiously and stays away from risky cells such as villages and roads. A hungry bear does the opposite: the food weight grows, the danger weight shrinks, and the crowding and home-range weights are reduced as well. In plain words, a hungry bear is willing to take risks and to leave its comfortable range to find something to eat, which is exactly the kind of behaviour that pushes bears toward human settlements when natural food is scarce, and which is at the centre of the anthropogenic-food hypothesis we test in the next chapter. The hunger level is computed as a simple normalisation of satiety, and the weights are linearly interpolated between a ``when full'' value and a ``when hungry'' value, so the transition is smooth rather than a hard switch.
+
+\subsection{Subadult male dispersal}
+
+On top of the generic movement logic, the model adds a specific behaviour for subadult males, because in brown bears natal dispersal is overwhelmingly a male, subadult phenomenon \cite{McLellan1989,Steyaert2012}. A male bear inside a configured age window (roughly two to six years old) is treated as a disperser: its crowding weight is multiplied up so it actively avoids competition, its home-range weight is multiplied down so the anchor barely holds it, and it receives a positive bonus for every cell it places between itself and its birth range. The combined effect is that young males drift outward from where they were born, which spreads the population across the map instead of letting it pile up around the founding locations. This matters for the realism of the spatial pattern and, indirectly, for how the population finds and uses new food.
+
+\subsection{Seasonality through hibernation}
+
+Brown bears are strongly seasonal animals, and ignoring this would make the yearly dynamics wrong. The model represents seasonality with a hibernation window defined as a fraction of the year, configured to run from roughly early November to early March, wrapping around the year boundary. While a bear is inside this window, two things change. First, its metabolism slows down: satiety decays much more slowly, controlled by a hibernation metabolism multiplier well below one, so a denned bear can survive the winter on its reserves. Second, its exposure to danger drops sharply, because a sheltered, denning bear is far less likely to encounter the risks of the active season. During hibernation the agent does no foraging, no movement and no mating, but, importantly, births still occur, since brown bear cubs are in fact born in the den during winter. This single mechanism is responsible for a lot of the believable seasonal texture in the output.
+
+\subsection{Reproduction and birth}
+
+Reproduction in the model is gated by several biological constraints that all have to be satisfied at once. A female can only conceive if she is not already pregnant, is older than the minimum reproductive age, has satiety above a minimum threshold, is off her reproductive cooldown, and perceives a male nearby. The satiety requirement is what couples reproduction to food: in a poor environment, fewer females clear the bar and the birth rate falls on its own, without us having to script it. Once pregnant, the female carries for a gestation period of about one year, and when it elapses she gives birth and enters a multi-year cooldown before she can reproduce again, which reproduces the long inter-birth intervals that are characteristic of the species.
+
+The litter is not a fixed number. Its size is drawn from a normal distribution around a calibrated mean (close to two cubs), clamped to be at least one. Each cub is then subjected to an infant-mortality probability at birth, representing perinatal losses, so not every cub in the litter is actually added to the live population. This two-step birth process, variable litter size followed by per-cub survival, gives a more realistic recruitment signal than simply adding a fixed number of healthy cubs per mother.
+
+\subsection{Avoiding artificial birth waves at founding}
+
+There is a subtle but important detail in how the founding population is created. If every founding female of reproductive age started the simulation in exactly the same reproductive state, they would all come off cooldown or finish gestation at the same time, producing an artificial wave of synchronised births that has nothing to do with ecology and everything to do with how we set up the run. To avoid this, the founding reproductive females are staggered: a fraction of them start already pregnant with a random remaining gestation, and the rest start with a random remaining cooldown. The founding ages themselves are not drawn uniformly either. A flat age spread from zero to twenty-five years would have a mean around twelve and a half, which is roughly double that of a real brown bear population and over-represents middle-aged bears, again triggering a boom-then-crash transient. Instead, founders are sampled from a young-skewed, truncated-exponential age pyramid with a mean of about seven years, which is much closer to a real stable age distribution \cite{Swenson1997,GrimmRailsback2005}. These two choices together make the population start near its stationary structure rather than lurching into it.
 
 \section{Environment representation}
 
-The environment is represented as a grid with terrain types such as forest, field, village, road, mountain, and blocked boundary cells. Each cell maintains food and danger values. Occupancy is tracked explicitly, including male occupancy counters used for local reproductive perception.
+The world is a square grid, and each cell carries a terrain type together with a food value and a danger value, both living in the interval $[0, 1]$, plus explicit occupancy information. The terrain types are forest, field, village, road, mountain and a blocked boundary type. When a random map is generated, the terrain mix is controlled by configurable percentages: in the current settings about a quarter of the map is forest, more than half is field, a tenth is mountain, and small fractions are road and village. Each terrain type then has its own average food and average danger, with a bounded random variance on top so that no two cells of the same type are identical. Forest is the rich, safe habitat (high average food, low danger), villages are food-rich but extremely dangerous, roads are poor and dangerous, and fields and mountains sit in between. This is a compact way of encoding the central ecological tension of the whole problem: the safest food is in the forest, but the easiest, most concentrated food is exactly where it is most dangerous to be, near people.
 
-The implementation supports both random environment generation and loading of pre-processed map grids. This capability is important for the thesis because it allows two types of experiments: synthetic controlled experiments and geographically structured experiments.
+Food is not static. Bears reduce the food on a cell when they eat there, and the environment regrows food over time, restoring a random number of cells each tick. The amount eaten per tick and the amount regrown per tick are both parameters, and the ratio between them effectively sets the carrying capacity of the landscape. This is precisely the lever that the anthropogenic-food scenario pulls: increasing the regrowth rate over the years is how we represent more food becoming available to bears, whether through supplemental feeding, crops, or waste near settlements.
 
-\section{Module-level architecture mapping}
+The environment also exposes a percept for each agent. The percept contains the bear's current cell with its food, danger and local bear count, the eight neighbouring cells with the same information plus a blocked flag, and a single boolean saying whether a male is nearby, which the females use for the reproduction check. The perception is strictly local; an agent never sees beyond its immediate ring of cells, which keeps the model faithful to the idea that bears act on local information.
 
-To keep the implementation understandable and maintainable, functionality is separated into modules with clear responsibilities.
+Finally, the implementation can either generate a random map from the terrain percentages or load a pre-processed map grid from a file. This second capability is what allows the project to move beyond purely synthetic landscapes toward geographically structured experiments, where the grid reflects a real habitat layout rather than a statistical mix.
 
-\begin{itemize}
-    \item \textbf{Agent module:} stores internal bear state and decision logic.
-    \item \textbf{Environment module:} exposes percept construction and state transitions.
-    \item \textbf{Simulation driver:} orchestrates tick loop, scheduling, and phase boundaries.
-    \item \textbf{Effects container:} decouples planning from state mutation.
-    \item \textbf{Experiment module:} handles run configuration, metrics output, schedules, and calibration tools.
-\end{itemize}
+\section{Module-level architecture and the action--effects pattern}
 
-This separation follows a practical software-engineering principle used throughout this thesis: isolate concerns so that ecological logic, execution policy, and experiment workflow can evolve independently.
+To keep the implementation understandable and to let the ecological logic, the execution policy and the experiment workflow evolve independently, the code is separated into modules with clear responsibilities. The \emph{BearAgent} module holds the internal state and the decision logic. The \emph{BearEnvironment} module builds percepts and applies state transitions. The \emph{BearSimulation} driver owns the tick loop, the phase boundaries and the scheduling. A dedicated effects container decouples deciding from mutating. And an \emph{Experiments} module handles run configuration, metrics output, schedules and calibration tools. This is the same separation-of-concerns principle that runs through the whole thesis: keep things that change for different reasons in different places.
 
-\section{Action effects and state commit logic}
+The action--effects pattern is worth describing on its own because it is what makes the parallel-plan / serial-commit idea actually work. When an agent decides on an action, the action is not applied directly to the world. Instead, each action object, when asked to contribute to the current step, writes its \emph{intent} into a shared per-tick \emph{BearActionEffects} container. A move writes a move intent keyed by agent id; a death writes a die intent together with its cause; a birth writes a birth intent naming the mother; eating writes a food-consumption intent for a cell; and a counter is kept for human-conflict exposure. Nothing in the world has changed yet at this point, we have only gathered a description of what everybody wants to do.
 
-Actions are not applied directly when decided. Instead, they are written as intents into a per-tick effect container. This design decouples decision from world mutation.
+The commit phase then resolves these intents in a fixed, deliberate order on the driver thread: first deaths are applied and the dead bears are removed, then births add new cubs after litter sampling and infant mortality, then food reductions are applied to the eaten cells, then move intents are resolved, then conflict exposure is recorded, and finally food is partially regrown. Applying intents in a fixed order is what gives the model deterministic semantics: there is never a question of which of two simultaneous changes ``won'', because the order is always the same. A pleasant side effect of centralising every change through this container is observability, because all the intents pass through one place, it is trivial to count births, deaths by cause, conflict events and so on for each tick and export them, which is the backbone of the entire results chapter.
 
-The effect container records, among others:
+One detail about movement is worth being honest about: the model does not enforce that a cell can hold only one bear. Move intents are grouped by their target cell and every claimant is moved there. Bears can therefore share a cell, and competition between them is expressed softly, through the crowding penalty in the movement score and through the shared food on the cell, rather than through a hard collision rule. This is a simplification, but it is a reasonable one at the scale of the question we are asking.
 
-\begin{itemize}
-    \item movement intents,
-    \item birth intents,
-    \item death intents with death cause,
-    \item food consumption intents,
-    \item human-conflict exposure events.
-\end{itemize}
+\section{Execution architecture and concurrency}
 
-During commit, these intents are resolved in a fixed order. This order provides deterministic semantics and avoids race conditions over shared structures.
+The simulation uses parallel planning and serial commit as its core execution strategy, and the implementation leans on a modern Java feature to do it cheaply. During planning, one small task is created per agent. Each task fetches that agent's percept and asks the agent to decide its action, and all of these tasks are submitted to an executor that uses \emph{virtual threads} (\texttt{newVirtualThreadPerTaskExecutor}). Virtual threads are extremely lightweight, so we can afford to create one task per bear even when there are several thousand bears, without worrying about exhausting operating-system threads. The driver then collects the results into an ordered map keyed by agent id and hands them to the commit phase.
 
-An additional benefit is observability. Because intents are centralized before commit, it becomes straightforward to compute per-tick counters and export them for analysis.
+The reason this works without any locks on the world is precisely the plan/commit separation discussed earlier. During planning, the workers only \emph{read} the world to build percepts and they only \emph{write} to the agent's own private state, never to shared structures. The shared world is touched only in the commit phase, which runs on a single thread. From a software-engineering point of view, this design gives three concrete advantages: safe concurrency for the expensive decision-making, a consistent and reproducible world transition per tick, and a single natural place to plug in metrics, schedule hooks and reproducibility controls.
 
-\section{Execution architecture and technical design}
+There is a trade-off here, of course: the serial commit is a hard synchronisation barrier. Every tick, all the parallel work has to finish and then funnel through one thread, and the loop cannot advance until the commit is done. At very large scales the commit can become the bottleneck, and, as we will argue in the computational discussion, this same barrier is exactly what makes distributing a \emph{single} run across machines unattractive. In the current version this trade-off is accepted on purpose, because correctness and interpretability are prioritised over squeezing out the last bit of low-level performance.
 
-The project uses parallel planning and serial commit as a deliberate architectural choice.
+\section{Reproducibility pipeline}
 
-In planning, each agent receives a percept and decides one action. This stage is parallelized through executor tasks. In commit, actions are resolved on a single driver thread. Deaths, births, moves, food updates, and counters are then applied in consistent sequence.
+Probably the strongest part of the whole project is the reproducibility infrastructure, due to the fact that it is what turns the simulator from a nice demonstration into something that can actually back up a scientific claim. The principle behind it is simple: every reported number must be traceable back to a scenario definition and a random seed.
 
-From software-engineering perspective, this design gives three core advantages:
+The trickiest part of reproducibility in a parallel simulation is randomness. If all agents drew from one shared random generator, then the order in which the threads happened to run would change the sequence of draws, and the same seed would give different results on different machines or even different runs. The \emph{RngSupport} module solves this with per-agent random streams. In seeded mode, each agent gets its own \emph{Random} instance whose seed is derived from the master seed and the agent id through a SplitMix64-style mixing function. Because the stream depends only on the pair (master seed, agent id), a given agent always sees exactly the same sequence of random numbers regardless of which worker thread happens to execute its decision. A separate environment-level generator, used only from serial code such as map generation and the commit phase, handles all the world-level randomness. The per-agent generators are kept in a concurrent map so that threads planning different agents never contend when a new agent's stream is created. When no seed is set, everything falls back to \texttt{ThreadLocalRandom}, so ordinary interactive runs pay no penalty for machinery they do not need.
 
-\begin{enumerate}
-    \item safe concurrency for agent decision-making,
-    \item consistent world-state transitions per tick,
-    \item straightforward integration of metrics, schedule hooks, and reproducibility controls.
-\end{enumerate}
-
-One practical trade-off is that deterministic commit can become a bottleneck at very high scale. This trade-off is accepted in the current version because correctness and interpretability are prioritised over aggressive low-level optimization.
-
-\section{Experiment and reproducibility pipeline}
-
-The implementation includes explicit experiment infrastructure, and this is one of the strongest practical components of the project.
-
-\begin{itemize}
-    \item run-level configuration (scenario id, run id, seed, replicate index, max ticks),
-    \item seeded random-number support for repeatability,
-    \item per-tick metrics recording (population, births, deaths, satiety, conflict events),
-    \item schedule-based parameter changes by simulation year,
-    \item calibration utilities (sampling and optimization helpers such as Latin hypercube and local search routines).
-\end{itemize}
-
-This pipeline is essential for transforming the simulator into a scientific instrument rather than only a demonstrator. It allows traceability from each reported result back to scenario setup and random seed.
+Around this sits the rest of the pipeline. A run configuration object captures the scenario id, the run id, the seed, the replicate index and the maximum number of ticks. A per-tick metrics recorder samples the population, births, deaths by cause, satiety, age structure and conflict events, and the founding cohort is recorded before any tick runs so that the initial gender split and founding-pregnancy count are visible too. The \emph{BatchRunner} ties it together: it runs several seeded replicates of each scenario, applies any parameter overrides to the global settings before a run and restores them afterwards, writes one per-tick CSV per replicate, and writes a metadata CSV and a summary CSV with the fit metrics. Every result in the next chapter comes out of this pipeline.
 
 \section{Schedule-driven scenario modelling}
 
-A key capability of the current implementation is schedule-driven parameter change. Instead of assuming static settings over the full run, the simulator can apply time-indexed parameter updates.
+A static model cannot represent the question we are asking, because the phenomenon itself is time-dependent: protection policies came into force in particular years, hunting rules changed, food availability shifted over the period. The model therefore supports time-indexed parameter changes through a \emph{ParameterSchedule} and a \emph{ScheduleApplier}. A schedule is simply a list of entries, each saying ``at this simulation year, set this parameter to this value''. As the simulation clock crosses each scheduled year, the applier mutates the corresponding field.
 
-This enables realistic scenario construction such as:
+The implementation does this through reflection on the static \emph{Settings} class, which is an elegant point I am quite happy with: a schedule can target \emph{any} settings field by name, without the simulation code having to know in advance which parameters a scenario will want to change. The applier looks up the named field, checks that it is static, parses the new value to the field's type, and sets it. Crucially, the first time it touches a field it snapshots the original value, and it records every change it makes as an applied event with the tick, the year, the parameter, the old value and the new value. At the end of the run it restores every field it ever touched, so one run can never silently contaminate the next, and the recorded events become a per-run audit trail that is written out alongside the results. This is how scenarios such as ``danger mortality drops from year two'' (the 2007 EU protection driver), ``food regrowth increases stepwise in years five, ten and fifteen'' (anthropogenic food), or a layered combination of several such changes are expressed, all without writing any scenario-specific code in the simulation loop itself.
 
-\begin{itemize}
-    \item step-change in danger-related mortality,
-    \item progressive food-supply modifications,
-    \item staged policy windows with explicit start years,
-    \item controlled stress tests for sensitivity analysis.
-\end{itemize}
+\section{Skipping the initialization transient}
 
-This mechanism is central for the thesis objective, because the target phenomenon is itself time-dependent.
+A practical problem with starting every run from freshly generated random founders is the initialization transient: even with the young-skewed age pyramid and the staggered reproductive states described earlier, the artificial founding population needs a few simulated years to settle into a realistic spatial and demographic structure, and during that settling the trajectory is not yet meaningful. Running every scenario through that warm-up over and over is wasteful and, worse, it injects a wobble into the early years that we then have to explain away.
+
+The project addresses this in two complementary ways. The first is snapshotting: the simulation can be run once until the population has spun up, then a \emph{BearSnapshot} of the whole world and population is written to disk, and later runs can restore that snapshot instead of generating founders, so they start from an already-settled state with the clock reset to zero. The second is the \emph{BalancedInitializer}, which goes a step further: it reads a characterization of the measured stable state (age distribution, satiety, sex, reproductive state, per-habitat placement) and generates a fresh founding population directly from those distributions, while also initialising the map's food to its drawn-down level rather than a full larder. Both approaches remove the transient; the difference is that the snapshot restores one specific frozen population exactly, while the balanced initializer samples a new but statistically equivalent one. For the campaign in the next chapter this matters a great deal, because it means the scenarios all start from the same realistic baseline and the differences we measure between them are due to the drivers, not to leftover warm-up noise.
 
 \section{Performance instrumentation}
 
-The simulation contains explicit timing breakdown for the main execution stages. Planning time is decomposed into task construction, worker invocation, future collection, and aggregate worker CPU time for perception/decision. Commit time is decomposed into action contribution, deaths, births, food updates, movement resolution, and bookkeeping.
+So that the computational discussion can be based on evidence rather than impression, the simulation contains a detailed timing instrumentation, active when benchmarking is enabled. The loop time is split into the planning time and the commit time, and each of those is decomposed further. On the planning side we record the time spent building the worker tasks, invoking them all, and collecting their futures, plus the aggregate worker CPU time spent on percept generation and on decision-making (measured per worker and therefore non-additive, since the workers run concurrently). On the commit side we record, separately, the time spent contributing actions into the effects container, applying deaths, applying births, applying food reductions, resolving moves, regrowing food and recording performed actions. There is also an explicit accounting of ``unaccounted'' overhead in each phase, so the numbers add up honestly.
 
-This instrumentation supports evidence-based discussion in Chapter 4. Instead of saying that one mode is faster in general, we can explain exactly where runtime is spent and why.
+This level of detail is what lets us say something precise instead of vague in the next chapter. Rather than claiming that one execution mode is ``faster'', we can point to exactly where the time goes, and, in particular, show how much of each tick is spent in the serial commit barrier, which is the quantity that decides whether distributing a single run could ever pay off.
 
 \section{Design limitations and current constraints}
 
-Although the architecture is robust for bachelor-level scope, several constraints remain and should be stated explicitly.
+It is worth being honest about the current limits of the architecture, and these are best understood as the boundary of where the approach currently applies rather than as defects.
+
+First, many parameters live in a single static \emph{Settings} class. This is convenient and it is what makes the reflection-based scheduler so simple, but global mutable state has to be handled carefully: the schedule applier's snapshot-and-restore discipline exists precisely to stop one run leaking into another, and strict isolation between runs depends on that discipline being respected. Second, the tick barrier imposes strict phase boundaries; this is what guarantees determinism, but it is also what limits how far a single run can be distributed across machines. Third, several ecological processes are intentionally abstracted, food is a scalar field rather than distinct food types, conflict is a proxy count of bears on village and road cells rather than a modelled human response, and there is no genetic or individual-quality variation between bears beyond age and sex. These are conscious simplifications appropriate to the scope of this thesis and to the comparative question being asked, and each of them is a natural direction for future extension.
+
+\section{Multithreading, and why distribution was not applied}
+
+It is worth being completely clear about this, because it would be easy to overstate it: the model is executed in a multithreaded way on a single machine, and a distributed execution was \emph{not} implemented anywhere in the project. This is a deliberate decision rather than an omission, and the reasoning follows directly from everything above. I want to explain why distribution simply did not make sense here, instead of bolting on a distributed mode just so the project could carry the label.
+
+Each agent's per-tick work, that is building a local percept, scoring eight neighbouring cells and picking an action, is very small, on the order of microseconds. At the same time the model is tightly tick-synchronised: every tick ends in a serial commit barrier that all agents must reach before anyone can advance. If one tried to spread the agents of a single run across several machines, every single tick would require shipping each machine's intents back to a coordinator, resolving them, and shipping the updated world back out, all before the next tick could begin. The communication and synchronisation cost of doing that, tens of thousands of times over a sixteen-year run, would dwarf the tiny amount of useful work it parallelises, so a distributed single run would almost certainly be \emph{slower} than the multithreaded one, not faster. This is a well-known pattern in the parallel and distributed simulation literature: fine-grained, frequently synchronised workloads do not distribute well, whereas coarse-grained ones do \cite{Fujimoto2000}.
+
+The right way to think about parallelism here is to match it to the granularity that actually exists in the problem:
 
 \begin{itemize}
-    \item The model still depends on a static global settings class for many parameters.
-    \item Tick synchronization imposes strict phase boundaries that can limit distributed intra-run scaling.
-    \item Some ecological processes are intentionally abstracted for tractability.
+    \item multithreading, with the lightweight virtual-thread planning stage, is what the project uses to accelerate the agent decisions \emph{inside} one run on a single machine, where the threads share memory and the commit barrier costs essentially nothing;
+    \item distribution would only ever belong at the level of \emph{many independent runs}, different scenarios and different replicate seeds, since those runs share nothing and never synchronise with each other.
 \end{itemize}
 
-These constraints do not invalidate the approach. They define its current applicability and provide direction for future extensions.
-
-\section{Multithreading and distributed strategy}
-
-A key point of this thesis is that the project does support distributed execution, but distributed intra-run execution is not assumed to be efficient by default.
-
-Because each agent action is relatively lightweight and the model is strongly tick-synchronized, inter-node coordination can become the bottleneck. This is why performance analysis must separate the two distributed modes.
-
-Therefore, the practical strategy proposed in this thesis is:
-
-\begin{itemize}
-    \item use multithreading to accelerate one simulation run,
-    \item use distributed resources to execute many independent runs in parallel.
-\end{itemize}
-
-This strategy keeps the technical meaning of a multithreaded and distributed ABM while remaining realistic for performance and reproducibility.
+That batch level is the embarrassingly parallel part of the problem, and it is the only place distribution could have actually paid off. But in practice it was not needed: the whole experiment campaign is a manageable number of independent seeded runs, and a single multi-core machine ran them in acceptable time, so there was no reason to add the complexity and the failure modes of a distributed setup. The honest summary, then, is that the project is a multithreaded agent-based model whose design was \emph{analysed} for distribution and found not to warrant it, which is itself one of the more useful technical findings of the thesis, because it pushes back on the common assumption that more machines automatically means a faster simulation.
 
 \section{Chapter summary}
 
-This chapter presented the full implementation approach, from modelling assumptions and module design to execution strategy and reproducibility infrastructure. The next chapter validates this approach through ecological and computational evaluation, using a structured protocol and explicit result templates.
+This chapter described the proposed approach in full, from the modelling assumptions and the agent's decision pipeline, through the environment and the action--effects commit logic, to the concurrency model, the reproducibility pipeline, the schedule-driven scenarios, the spin-up machinery and the performance instrumentation. The recurring theme has been the plan/commit separation and the decision to keep ecological logic, execution policy and experiment workflow apart from one another. The next chapter puts all of this to work: it defines the evaluation protocol and reports both the ecological results of the 2005--2021 campaign and the computational findings that justify the multithreaded single-machine execution and the reasoned decision not to distribute.

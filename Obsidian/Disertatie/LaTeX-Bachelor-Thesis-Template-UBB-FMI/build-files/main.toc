@@ -1,47 +1,58 @@
 \babel@toc {english}{}\relax 
 \contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.1}%
 \contentsline {section}{\numberline {1.1}Context and motivation}{1}{section.1.1}%
-\contentsline {section}{\numberline {1.2}Research problem and objectives}{1}{section.1.2}%
-\contentsline {section}{\numberline {1.3}Scope and delimitations}{2}{section.1.3}%
-\contentsline {section}{\numberline {1.4}Original contributions}{2}{section.1.4}%
-\contentsline {section}{\numberline {1.5}Thesis structure}{3}{section.1.5}%
-\contentsline {chapter}{\numberline {2}Background and related work}{4}{chapter.2}%
-\contentsline {section}{\numberline {2.1}Brown bear ecology and demographic context}{4}{section.2.1}%
-\contentsline {section}{\numberline {2.2}Simulation and ABM context}{4}{section.2.2}%
-\contentsline {section}{\numberline {2.3}Romanian case study framing}{5}{section.2.3}%
-\contentsline {section}{\numberline {2.4}Demography and parameter realism}{5}{section.2.4}%
-\contentsline {section}{\numberline {2.5}Methodological references for evaluation}{6}{section.2.5}%
-\contentsline {section}{\numberline {2.6}Related software approaches}{6}{section.2.6}%
-\contentsline {section}{\numberline {2.7}Gap addressed by this thesis}{7}{section.2.7}%
-\contentsline {section}{\numberline {2.8}Chapter summary}{7}{section.2.8}%
-\contentsline {chapter}{\numberline {3}Proposed approach}{8}{chapter.3}%
-\contentsline {section}{\numberline {3.1}Model overview}{8}{section.3.1}%
-\contentsline {section}{\numberline {3.2}Problem formulation and modelling assumptions}{8}{section.3.2}%
-\contentsline {section}{\numberline {3.3}Agent state and behaviour}{9}{section.3.3}%
-\contentsline {section}{\numberline {3.4}Environment representation}{9}{section.3.4}%
-\contentsline {section}{\numberline {3.5}Module-level architecture mapping}{10}{section.3.5}%
-\contentsline {section}{\numberline {3.6}Action effects and state commit logic}{10}{section.3.6}%
-\contentsline {section}{\numberline {3.7}Execution architecture and technical design}{11}{section.3.7}%
-\contentsline {section}{\numberline {3.8}Experiment and reproducibility pipeline}{11}{section.3.8}%
-\contentsline {section}{\numberline {3.9}Schedule-driven scenario modelling}{12}{section.3.9}%
-\contentsline {section}{\numberline {3.10}Performance instrumentation}{12}{section.3.10}%
-\contentsline {section}{\numberline {3.11}Design limitations and current constraints}{12}{section.3.11}%
-\contentsline {section}{\numberline {3.12}Multithreading and distributed strategy}{13}{section.3.12}%
-\contentsline {section}{\numberline {3.13}Chapter summary}{13}{section.3.13}%
-\contentsline {chapter}{\numberline {4}Evaluation and validation}{14}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Evaluation strategy}{14}{section.4.1}%
-\contentsline {section}{\numberline {4.2}Experimental protocol and scenarios}{14}{section.4.2}%
-\contentsline {section}{\numberline {4.3}Ecological results}{15}{section.4.3}%
-\contentsline {subsection}{\numberline {4.3.1}Quantitative summary}{15}{subsection.4.3.1}%
-\contentsline {subsection}{\numberline {4.3.2}End-of-window interpretation}{16}{subsection.4.3.2}%
-\contentsline {subsection}{\numberline {4.3.3}Mortality-structure summary}{16}{subsection.4.3.3}%
-\contentsline {section}{\numberline {4.4}Figure placeholders for final insertion}{16}{section.4.4}%
-\contentsline {section}{\numberline {4.5}Computational validation note}{16}{section.4.5}%
-\contentsline {section}{\numberline {4.6}Interpretation and validity limits}{19}{section.4.6}%
-\contentsline {chapter}{\numberline {5}Discussion, conclusion and future work}{20}{chapter.5}%
-\contentsline {section}{\numberline {5.1}Discussion}{20}{section.5.1}%
-\contentsline {section}{\numberline {5.2}Conclusion}{21}{section.5.2}%
-\contentsline {section}{\numberline {5.3}Limitations}{21}{section.5.3}%
-\contentsline {section}{\numberline {5.4}Future work}{22}{section.5.4}%
-\contentsline {section}{\numberline {5.5}Final practical remarks}{22}{section.5.5}%
-\contentsline {chapter}{Bibliography}{23}{chapter*.4}%
+\contentsline {section}{\numberline {1.2}Research problem and objectives}{2}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Scope and delimitations}{3}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Original contributions}{3}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Thesis structure}{4}{section.1.5}%
+\contentsline {section}{\numberline {1.6}Use of generative AI tools}{4}{section.1.6}%
+\contentsline {chapter}{\numberline {2}Background and related work}{6}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Brown bear ecology and demographic context}{6}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Simulation and the agent-based paradigm}{7}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Romanian case study framing}{8}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Demography and the problem of parameter realism}{8}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Methodological references for evaluation}{9}{section.2.5}%
+\contentsline {section}{\numberline {2.6}Related software approaches}{9}{section.2.6}%
+\contentsline {section}{\numberline {2.7}Gap addressed by this thesis}{10}{section.2.7}%
+\contentsline {section}{\numberline {2.8}Chapter summary}{11}{section.2.8}%
+\contentsline {chapter}{\numberline {3}Proposed approach}{12}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Model overview}{12}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Problem formulation and modelling assumptions}{13}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Agent state and behaviour}{14}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}The decision pipeline}{14}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Movement as a weighted trade-off}{15}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}Subadult male dispersal}{16}{subsection.3.3.3}%
+\contentsline {subsection}{\numberline {3.3.4}Seasonality through hibernation}{16}{subsection.3.3.4}%
+\contentsline {subsection}{\numberline {3.3.5}Reproduction and birth}{17}{subsection.3.3.5}%
+\contentsline {subsection}{\numberline {3.3.6}Avoiding artificial birth waves at founding}{17}{subsection.3.3.6}%
+\contentsline {section}{\numberline {3.4}Environment representation}{18}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Module-level architecture and the action--effects pattern}{19}{section.3.5}%
+\contentsline {section}{\numberline {3.6}Execution architecture and concurrency}{20}{section.3.6}%
+\contentsline {section}{\numberline {3.7}Reproducibility pipeline}{20}{section.3.7}%
+\contentsline {section}{\numberline {3.8}Schedule-driven scenario modelling}{21}{section.3.8}%
+\contentsline {section}{\numberline {3.9}Skipping the initialization transient}{22}{section.3.9}%
+\contentsline {section}{\numberline {3.10}Performance instrumentation}{22}{section.3.10}%
+\contentsline {section}{\numberline {3.11}Design limitations and current constraints}{23}{section.3.11}%
+\contentsline {section}{\numberline {3.12}Multithreading, and why distribution was not applied}{24}{section.3.12}%
+\contentsline {section}{\numberline {3.13}Chapter summary}{25}{section.3.13}%
+\contentsline {chapter}{\numberline {4}Evaluation and validation}{26}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Evaluation strategy}{26}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Experimental protocol and scenarios}{27}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Ecological results}{28}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Quantitative summary}{28}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Where the trajectories diverge}{29}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}Mortality structure}{30}{subsection.4.3.3}%
+\contentsline {subsection}{\numberline {4.3.4}End-of-window interpretation}{30}{subsection.4.3.4}%
+\contentsline {section}{\numberline {4.4}Trajectory and structure figures}{31}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Computational analysis}{34}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}Where a tick spends its time}{34}{subsection.4.5.1}%
+\contentsline {subsection}{\numberline {4.5.2}Why a single run should not be distributed}{35}{subsection.4.5.2}%
+\contentsline {subsection}{\numberline {4.5.3}Where distribution would have belonged, and why it was still not needed}{35}{subsection.4.5.3}%
+\contentsline {section}{\numberline {4.6}Interpretation and validity limits}{36}{section.4.6}%
+\contentsline {chapter}{\numberline {5}Discussion, conclusion and future work}{37}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Discussion}{37}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Conclusion}{38}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Limitations}{39}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Future work}{40}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Final remarks}{41}{section.5.5}%
+\contentsline {chapter}{Bibliography}{42}{chapter*.4}%

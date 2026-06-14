@@ -3,68 +3,50 @@
 
 \section{Context and motivation}
 
-In the last years, the brown bear population in Romania has become one of the most visible and debated wildlife-management topics in Europe. The debate is active in public media, policy documents, and scientific reports. On one side, there are concerns related to safety and conflict at settlement boundaries. On the other side, there is the scientific need to explain long-term population dynamics using measurable mechanisms instead of isolated observations.
+Over the last years, the brown bear population in Romania has quietly become one of the most visible and most argued-about wildlife-management topics in the whole of Europe. The debate is alive in the public media, in policy documents and in scientific reports at the same time, and the two sides of it pull in opposite directions. On one side there is a very real concern about safety and about the conflicts that happen at the edges of settlements, where bears and people meet more and more often. On the other side there is the scientific need to explain the long-term dynamics of the population using measurable mechanisms, rather than reacting to isolated incidents or to whichever number was published most recently. Romania holds the largest brown bear population in the European Union, so whatever happens here is not a local curiosity; it sets the tone for how a recovering large carnivore is managed across the continent \cite{Chapron2014,Pop2018}.
 
-The difficulty is that many mechanisms can act at the same time: hunting-policy changes, supplemental feeding, anthropogenic food near villages, landscape transition, and seasonality. If these mechanisms are analyzed separately, interpretation may become incomplete. In this context, simulation is useful because it allows controlled experiments where each factor can be switched, scheduled, and measured in repeated runs.
+The difficulty, and the thing that makes the question genuinely hard, is that many mechanisms act at the same moment. Hunting-policy changes, supplemental and anthropogenic feeding, the food that bears find near villages, the slow transformation of the landscape, and the strong seasonality of the animal itself all overlap and interact. If each of these is analysed on its own, the interpretation almost always comes out incomplete, because the interesting behaviour lives in how they combine. This is exactly the situation in which simulation becomes useful, not as a gadget but as a method: it lets us run controlled experiments in which each factor can be switched on, scheduled in time, and measured, and in which the same experiment can be repeated many times to see whether a result is robust or just luck.
 
-This project proposes a spatial agent-based simulation for brown bears, inspired by the Romanian Carpathian context and implemented in Java. The approach aims to preserve biological meaning while remaining computationally practical for large experiment batches.
+This thesis proposes a spatial agent-based simulation for brown bears, inspired by the Romanian Carpathian context and implemented from the ground up in Java. The aim throughout has been to keep the biological meaning of the model intact while keeping it computationally practical enough to run the large batches of experiments that a serious comparison actually requires. Those two goals are in constant tension, and a good part of the work described here is about managing that tension sensibly.
 
 \section{Research problem and objectives}
 
-The core research question is the following: \emph{which mechanisms, alone or in combination, can best explain the observed increase of brown bear population in the Romanian Carpathian area during 2005--2021?}
+The core research question can be stated in a single sentence: \emph{which mechanisms, alone or in combination, can best explain the observed increase of the brown bear population in the Romanian Carpathian area during 2005--2021?} Everything in the thesis is organised around answering that question in a way that is reproducible and that does not overclaim.
 
-The objectives of this thesis are:
+To get there, the thesis sets itself five concrete objectives:
 
 \begin{enumerate}
-    \item to design an agent-based model where each bear is represented as an individual with age, sex, satiety, reproduction and movement behaviour;
-    \item to represent habitat and risk as spatially heterogeneous grid cells with food and danger dynamics;
-    \item to evaluate candidate drivers using baseline and counterfactual scenarios;
-    \item to build a reproducible experiment pipeline based on controlled random seeds, metrics recording, and parameter schedules;
-    \item to evaluate computational behaviour with emphasis on multithreaded versus distributed execution strategy.
+    \item to design an agent-based model in which each bear is an individual with age, sex, satiety, reproduction and movement behaviour, so that population dynamics emerge from individual decisions rather than being imposed by an equation;
+    \item to represent the habitat and its risks as a spatially heterogeneous grid of cells carrying food and danger that change over time;
+    \item to evaluate candidate drivers of the increase using a baseline together with a set of counterfactual scenarios;
+    \item to build a reproducible experiment pipeline based on controlled random seeds, per-tick metrics recording and time-indexed parameter schedules, so that every result is traceable;
+    \item to study the computational behaviour of the model, with particular attention to why multithreading is the right tool for accelerating a single run, and why distributing a single run was judged not to make sense for a model of this granularity.
 \end{enumerate}
+
+The first four objectives belong to the ecological side of the work and the fifth to its engineering side, but as the thesis will argue, the two are tightly connected: the kind of model that answers the ecological question well is exactly the kind of model whose computational behaviour is interesting and a bit counter-intuitive.
 
 \section{Scope and delimitations}
 
-This thesis adopts a focused and explicit scope. The study is defined as a \textbf{Transylvania-focused case study inside the Romanian Carpathians}, with a \textbf{2005--2021 analysis window}.
+It is important to be explicit and a little disciplined about scope, because a model can always be asked to do more than it honestly can. The study covers the \textbf{brown bear population across Romania's forests}, essentially the Carpathian range, where almost the entire Romanian population lives, over a \textbf{2005--2021 analysis window}. That window is chosen because it is where the observed national increase is documented and where the policy and habitat context can be tied to real sources.
 
-The purpose of the model is \textbf{explanatory counterfactual analysis}, not exact numerical forecasting. In other words, the simulation is used to compare how plausible driver combinations can reproduce the observed increase trend under explicit assumptions, rather than to claim exact future population values.
-
-This scope is chosen for three reasons:
-
-\begin{enumerate}
-    \item it matches the model granularity (local interactions, tick-based dynamics, scenario schedules);
-    \item it is scientifically more robust under real-world uncertainty in census and policy data;
-    \item it aligns with the technical contribution, where many controlled scenario replicates are required.
-\end{enumerate}
-
-Therefore, conclusions in this thesis should be interpreted as comparative explanatory evidence across scenarios, not as deterministic prediction statements.
+The purpose of the model is \textbf{explanatory counterfactual analysis}, and explicitly not exact numerical forecasting. In other words, the simulation is used to compare how plausible combinations of drivers manage to reproduce the observed increasing trend under stated assumptions; it is not used to claim a precise number of bears for some future year. I have chosen this scope for three reasons. First, it matches the granularity of the model, which is built on local interactions, tick-based dynamics and scenario schedules, and which is naturally suited to comparison rather than point prediction. Second, it is scientifically more robust given the real uncertainty in census methods and in the exact timing of policy periods. Third, it aligns with the technical contribution, where the value comes from running many controlled scenario replicates, which is again a comparative activity. The reader should therefore read every conclusion in this thesis as comparative explanatory evidence across scenarios, and never as a deterministic prediction.
 
 \section{Original contributions}
 
-The main contributions are both ecological and technical, and they are tightly connected.
+The contributions of this thesis are both ecological and technical, and they are most interesting exactly where the two meet.
 
-First, the ecological contribution is the integration of multiple candidate drivers inside one simulation framework. Instead of discussing one factor at a time, the project evaluates both isolated and combined effects. This allows interpretation of relative contribution and interaction effects.
+First, on the ecological side, the contribution is the integration of several candidate drivers inside one simulation framework. Instead of discussing one factor at a time, as much of the existing debate does, the project evaluates both isolated and combined effects, which makes it possible to talk about relative contribution and about interaction between drivers in a disciplined way.
 
-Second, the technical contribution is an execution strategy that is realistic for this model class. The implementation supports multithreading and distributed execution, but the thesis does not assume distributed is always faster. For this fine-grained tick-based simulation, distributed execution \emph{inside one run} can introduce communication and synchronization overhead larger than the useful work. In contrast, distributed execution is expected to be efficient for \emph{batches of independent runs}.
+Second, on the technical side, the contribution is a reasoned execution strategy that is realistic for this particular class of model. The implementation is multithreaded on a single machine: the per-agent planning phase is parallelised, while the world update stays serial. A distributed execution, on the other hand, was deliberately \emph{not} built, and the thesis explains why rather than treating ``distributed'' as an automatic mark of seriousness. For a fine-grained, tick-synchronised simulation like this one, distributing a single run would introduce communication and synchronisation overhead that is larger than the tiny per-agent work it would parallelise, so it would most likely run slower, not faster. The only level at which distribution would help is a \emph{batch of independent runs}, which is embarrassingly parallel, but at the scale of these experiments a single multi-core machine handled the whole campaign comfortably, so distribution was never necessary. Making this judgement explicitly, and backing it with the timing instrumentation, is one of the things that set this work apart from a model that simply runs and prints a graph.
 
-Third, the project includes practical reproducibility components directly in code: run configurations, seeded randomness, per-tick metrics, schedule-based parameter updates, and calibration utilities.
+Third, the project bakes reproducibility directly into the code rather than treating it as an afterthought: run configurations, seeded randomness with per-agent streams, per-tick metrics, schedule-based parameter updates and calibration utilities are all first-class components.
 
-Fourth, the thesis contributes a clear modelling scope statement that keeps claims proportional to evidence: explanatory counterfactual analysis over 2005--2021 for a Transylvania-focused Carpathian case study.
+Fourth, and more modestly, the thesis contributes a clear scope statement that keeps the claims proportional to the evidence, explanatory counterfactual analysis over 2005--2021 for the Romanian brown bear population, which is itself a small act of scientific hygiene that ecological simulation work does not always practise.
 
 \section{Thesis structure}
 
-The thesis is organized in five main chapters plus references.
+The thesis is organised in five chapters followed by the references. Chapter~2 sets out the ecological background and the related work in agent-based and parallel simulation, and it states precisely the gap that this project addresses. Chapter~3 describes the proposed approach in detail: the structure of the model, the decision logic of the agents, the representation of the environment, the action--commit execution architecture, and the reproducibility and scheduling machinery that turns the simulator into a scientific instrument. Chapter~4 presents the evaluation, in two halves, the ecological results of the 2005--2021 campaign and the computational findings that justify the execution strategy. Chapter~5 then discusses what the results mean, states the limitations honestly, draws the conclusions, and lays out the directions in which the work can be taken further.
 
-Chapter 2 presents ecological background and related work in ABM and parallel simulation, together with the specific gap addressed by this project. Chapter 3 describes the proposed approach, including model structure, agent logic, environment representation, and execution architecture. Chapter 4 presents the evaluation design and templates used for reporting ecological and computational results. Chapter 5 discusses findings, limitations, conclusions, and future work.
+\section{Use of generative AI tools}
 
-To reach the target manuscript size of approximately 30 pages in the current template format, the intended distribution is:
-
-\begin{itemize}
-    \item Chapter 1: 4--5 pages,
-    \item Chapter 2: 7--8 pages,
-    \item Chapter 3: 8--9 pages,
-    \item Chapter 4: 6--7 pages,
-    \item Chapter 5: 3--4 pages.
-\end{itemize}
-
-This page budget is used as a writing guide and will be refined after figures, tables, and final numerical results are inserted.
+For full transparency, I want to state clearly where generative AI tools were used in this work. They were used in a limited way, to help develop the user-interface (frontend) part of the application, that is the visual layer through which the simulation is displayed and controlled. Concretely, I used such tools as an assistant while writing the frontend code, asking for boilerplate, for help with layout and rendering details, and as a starting point that I then reviewed, adapted and integrated into the project. The scientific substance of the thesis, that is the agent-based model, its mechanisms and parameters, the experiment pipeline, the scenarios, the results and their interpretation, is my own work.

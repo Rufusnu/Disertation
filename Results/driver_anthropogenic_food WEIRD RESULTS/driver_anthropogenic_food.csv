@@ -1,0 +1,17 @@
+# DRIVER: Rising anthropogenic food (2005-2021). Over the period bears gained
+# increasing access to human-associated food: unsecured garbage and landfills,
+# orchards and maize crops on the forest edge, supplementary feeding at hunting
+# stations, and direct tourist feeding (e.g. along the Transfagarasan road).
+# More reliable food raises body condition, survival and reproductive output.
+#
+# Modelled effect: a gradual, stepwise increase in food regrowth. Steps at
+# calendar 2010 (year 5), 2015 (year 10) and 2020 (year 15).
+#
+# Baseline FOOD_GROWN_PER_TICK = 0.0045
+#   year 5  -> 0.0048  (+7%)
+#   year 10 -> 0.0051  (+13%)
+#   year 15 -> 0.0054  (+20%)
+year,parameter,value
+5,FOOD_GROWN_PER_TICK,0.0048
+10,FOOD_GROWN_PER_TICK,0.0051
+15,FOOD_GROWN_PER_TICK,0.0054
