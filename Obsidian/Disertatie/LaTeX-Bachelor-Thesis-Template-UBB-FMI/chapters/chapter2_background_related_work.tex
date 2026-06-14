@@ -1,0 +1,82 @@
+\chapter{Background and related work}
+\label{ch:background_related}
+
+\section{Brown bear ecology and demographic context}
+
+Brown bear ecology is a useful case for simulation because population trends emerge from many local processes: reproduction, mortality, food access, space use, and interaction with humans. In practice, these processes do not act separately. They overlap in time, and their combined effect can push a population toward growth, decline, or local equilibrium.
+
+Demographic literature shows that brown bear population trajectories are strongly shaped by age and sex structure, inter-birth intervals, cub survival, and mortality pressure in human-dominated landscapes \cite{Schwartz2003,Saether1998,Swenson1997}. These references are important for this thesis because they provide realistic bounds for the model parameters rather than arbitrary values.
+
+In the Romanian context, the problem is even more relevant. Romania hosts the largest brown bear population in the European Union, and recent work highlights both movement ecology and human-bear interaction patterns in the Carpathians \cite{Pop2018}. At the same time, policy documents and institutional reports indicate substantial changes in estimated population size and in management strategy over the last years \cite{INCDS2023,MMAP2024}. Therefore, this is not only a theoretical modelling exercise, but a practical problem with public-policy impact.
+
+\section{Simulation and ABM context}
+
+Agent-based modelling is a natural fit when individual heterogeneity matters and when interactions are local in space and time. Instead of forcing one aggregated equation for the full population, ABM allows each individual to carry its own internal state and update behaviour depending on local context. Population-level behaviour then appears as an emergent effect.
+
+The methodological foundations of individual-based ecological models are already well established \cite{GrimmRailsback2005,RailsbackGrimm2019}. In addition, the ODD protocol and its update provide a practical standard for describing simulation assumptions, processes, and reproducibility decisions \cite{Grimm2006ODD,Grimm2020ODD}. This thesis follows the same direction by explicitly defining agent state, scheduling logic, environment representation, and experiment protocol.
+
+This approach is particularly useful for counterfactual analysis. If one wants to test, for example, hunting-pressure changes or food-subsidy effects, ABM allows these changes to be applied as explicit rules and schedules and then evaluated under repeated runs.
+
+\section{Romanian case study framing}
+
+In this thesis, the Romanian case is treated as a concrete testbed, not as a generic background example. More precisely, the empirical framing is a Transylvania-focused case study inside the Romanian Carpathians, with the 2005--2021 interval used as the main analysis window. This framing has two major advantages.
+
+First, it provides real-world constraints. Demographic assumptions, habitat structure, and policy context can be tied to published or institutional sources, which reduces arbitrary modelling choices.
+
+Second, it allows practical interpretation. Even if the model remains simplified, the scenario outputs can still be interpreted in a management-oriented direction. For example, it becomes possible to discuss whether a specific combination of pressure factors reproduces observed trends more plausibly than another.
+
+At the same time, this framing also introduces responsibility in interpretation. Institutional estimates can evolve as methods improve, and policy periods are not always cleanly separated in time. Because of this, the simulation should be interpreted as a structured comparative tool under explicit assumptions, not as an exact forecasting device.
+
+\section{Demography and parameter realism}
+
+A recurring problem in student simulation projects is parameter arbitrariness. In ecological ABM, this problem can produce plausible-looking plots that have weak scientific meaning. To avoid this, parameter ranges in this project are constrained using demographic literature where possible.
+
+The references used in this chapter support realistic ranges for:
+
+\begin{itemize}
+	\item age-related mortality,
+	\item cub vulnerability and survival bottlenecks,
+	\item reproduction intervals,
+	\item effects of anthropogenic mortality pressure.
+\end{itemize}
+
+This does not eliminate uncertainty, but it does provide a defensible starting interval for calibration and sensitivity experiments.
+
+\section{Methodological references for evaluation}
+
+Besides ecological literature, this thesis also relies on references for methodology. In particular, sensitivity analysis and parameter-estimation workflows are informed by standard sources \cite{Saltelli2008,Thiele2014}. This is relevant for Chapter 4, where scenario outcomes are interpreted using multiple runs and aggregated metrics rather than a single trajectory.
+
+The methodological decision is simple: if a claim depends on stochastic simulation, then one run is not enough. Replicate design and uncertainty reporting are mandatory.
+
+\section{Related software approaches}
+
+From a software perspective, there is mature prior work for multi-agent simulation environments, including MASON and Repast-based high-performance variants \cite{Luke2005,CollierNorth2013}. There is also a broader theoretical foundation for parallel and distributed simulation systems \cite{Fujimoto2000}.
+
+However, these works also suggest an important practical point: performance benefits depend on workload shape, communication pattern, and synchronization policy. In models where each agent performs heavy local computation, distributed execution can scale well. In models where per-agent work is lightweight and synchronization is frequent, communication overhead can reduce or even reverse speedup.
+
+This distinction is essential in our case. The bear model is tick-based and globally synchronized. Because each agent action is relatively small in cost, the distributed intra-run mode can be less efficient than multithreaded single-node execution. On the other hand, distributed resources are still very effective for parallelizing many independent runs.
+
+Related ecological ABM work also supports the usefulness of this paradigm for large-carnivore dynamics and territorial behaviour, including studies beyond bears, such as tiger ABM investigations \cite{Carter2015}. The direct value for this thesis is methodological: complex wildlife dynamics can indeed be represented at the individual-agent level with meaningful scenario outputs.
+
+\section{Gap addressed by this thesis}
+
+The gap addressed in this thesis has two dimensions.
+
+First, on the ecological side, many discussions about bear-population change remain descriptive. Often, one driver is emphasized at a time, while interactions between drivers are not tested inside one consistent simulation framework. This thesis addresses that by integrating multiple candidate drivers in one model and evaluating them under controlled scenarios.
+
+Second, on the computational side, reports frequently present multithreaded and distributed simulation as universally beneficial. In practice, this is not always true. For our tick-synchronized model, we explicitly evaluate where multithreading helps, where distribution helps, and where distribution becomes overhead.
+
+Therefore, the contribution is not only a model, but also a realistic execution strategy for this model class:
+
+\begin{itemize}
+	\item multithreading for accelerating one simulation run,
+	\item distributed execution for accelerating large scenario/replicate batches.
+\end{itemize}
+
+This explicit separation improves both scientific reproducibility and engineering clarity for the final results chapter.
+
+\section{Chapter summary}
+
+This chapter established the conceptual and bibliographic foundation of the thesis. The ecological context motivates the modelling problem, ABM literature supports the selected paradigm, and simulation-systems literature supports the technical evaluation criteria.
+
+The next chapter moves from background to implementation details: how the world is represented, how agents decide and act, how effects are committed per tick, and how reproducible experiments are orchestrated.

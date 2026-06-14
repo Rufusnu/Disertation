@@ -1,0 +1,25 @@
+\documentclass[12pt]{report}
+\usepackage[language=english, type=bachelor]{style}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{setspace}
+\renewcommand{\baselinestretch}{1.5}
+
+\begin{document}
+
+\pagenumbering{roman}
+\tableofcontents
+
+\cleardoublepage
+\pagenumbering{arabic}
+
+\input{chapters/chapter1_introduction.tex}
+\input{chapters/chapter2_background_related_work.tex}
+\input{chapters/chapter3_proposed_approach.tex}
+\input{chapters/chapter4_evaluation_validation.tex}
+\input{chapters/chapter5_discussion_conclusion_future.tex}
+
+\bibliography{bibliography}
+\bibliographystyle{plainurl}
+
+\end{document}

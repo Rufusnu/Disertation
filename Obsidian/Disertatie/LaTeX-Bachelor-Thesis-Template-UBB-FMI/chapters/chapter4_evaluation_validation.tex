@@ -1,0 +1,165 @@
+\chapter{Evaluation and validation}
+\label{ch:evaluation}
+
+\section{Evaluation strategy}
+
+The evaluation in this thesis is centered on ecological explanatory fit for the 2005--2021 window, using scenario-based counterfactual analysis.
+
+The reference annual trajectory is the Romanian national series (2005--2021), from 5800 bears in 2005 to 7500 bears in 2021. This implies an observed cumulative increase of 29.31\% and an average annual growth of approximately 1.62\%/year.
+
+The simulations are compared against this trajectory with:
+
+\begin{itemize}
+    \item MAE (mean absolute error),
+    \item RMSE (root mean square error),
+    \item end-of-window gap to 2021 reference,
+    \item cumulative growth and annualized growth inside the same window.
+\end{itemize}
+
+\section{Experimental protocol and scenarios}
+
+All scenarios were run with three replicates and then post-processed into annual aggregates (year 0 to year 16, mapped to 2005 to 2021). The campaign includes:
+
+\begin{itemize}
+    \item baseline,
+    \item EU protection driver (2007),
+    \item hunting-ban driver (2016),
+    \item intervention-cull driver (2021),
+    \item habitat-loss driver,
+    \item anthropogenic-food driver,
+    \item combined realistic schedule.
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{Scenario definitions used in the final campaign.}
+\label{tab:ch4_scenario_matrix}
+\begin{tabular}{|l|p{8.5cm}|}
+\hline
+Scenario & Main schedule effect \\
+\hline
+Baseline & No time-varying policy/habitat driver beyond baseline settings. \\
+EU protection 2007 & Danger mortality reduced from simulation year 2. \\
+Hunting ban 2016 & Danger mortality reduced from simulation year 11. \\
+Intervention cull 2021 & Danger mortality increased from simulation year 16. \\
+Habitat loss & Forest food reduced stepwise (years 3, 9, 14). \\
+Anthropogenic food & Food regrowth increased stepwise (years 5, 10, 15). \\
+Combined realistic & Layered schedule: protection + food increase + 2016 ban + 2021 cull. \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Ecological results}
+
+\subsection{Quantitative summary}
+
+Table~\ref{tab:ch4_ecology_summary} shows the core quantitative comparison against the 2005--2021 reference trajectory.
+
+\begin{table}[htbp]
+\centering
+\caption{Ecological validation metrics (annual aggregates, 2005--2021).}
+\label{tab:ch4_ecology_summary}
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+Scenario & End pop. & Growth (\%) & CAGR (\%/y) & MAE & RMSE \\
+\hline
+Baseline & 6020.67 & 2.57 & 0.16 & 360.32 & 539.66 \\
+EU protection 2007 & 6103.33 & 3.98 & 0.24 & 342.60 & 511.44 \\
+Hunting ban 2016 & 6068.67 & 3.39 & 0.21 & 348.76 & 522.58 \\
+Intervention cull 2021 (16y) & 6020.67 & 2.57 & 0.16 & 360.32 & 539.66 \\
+Habitat loss & 6020.67 & 2.57 & 0.16 & 360.32 & 539.66 \\
+Anthropogenic food & 7175.00 & 22.24 & 1.26 & 261.25 & 336.27 \\
+Combined realistic & 7194.67 & 22.58 & 1.28 & 278.64 & 344.65 \\
+\hline
+Reference (observed) & 7500.00 & 29.31 & 1.62 & 0.00 & 0.00 \\
+\hline
+\end{tabular}
+\end{table}
+
+Main observations:
+
+\begin{enumerate}
+    \item Baseline and policy-only schedules underpredict growth strongly in this calibration.
+    \item The anthropogenic-food schedule yields the best fit in this campaign (lowest MAE and RMSE).
+    \item The combined realistic schedule is very close to anthropogenic food, but slightly worse on MAE/RMSE.
+    \item The 2021 intervention-cull schedule has negligible effect within the 2005--2021 comparison window because it is activated at the end of the window.
+\end{enumerate}
+
+Relative to baseline, MAE drops by about 27.5\% under the anthropogenic-food scenario and by about 22.7\% under the combined scenario.
+
+\subsection{End-of-window interpretation}
+
+At year 16 (mapped to 2021), the reference value is 7500 bears.
+
+\begin{itemize}
+    \item Baseline gap: 1479.33 bears below reference.
+    \item Anthropogenic-food gap: 325.00 bears below reference.
+    \item Combined realistic gap: 305.33 bears below reference.
+\end{itemize}
+
+This indicates that, in the current parameterization, increased food availability is the dominant mechanism needed to approach the observed 2021 level.
+
+\subsection{Mortality-structure summary}
+
+Across scenarios, mean annual total deaths decrease from approximately 512.76 (baseline) to about 491.47--491.61 in the two best-fit scenarios. The danger-death share also decreases in the combined schedule relative to baseline, consistent with lower danger mortality settings in part of the timeline.
+
+\section{Figure placeholders for final insertion}
+
+The following placeholders are intentionally left as boxes so final plots can be inserted after figure export.
+
+\begin{figure}[htbp]
+    \centering
+    % Suggested final file: figures/ch4_population_all_scenarios.pdf
+    \fbox{\rule{0pt}{2.2in}\rule{0.85\textwidth}{0pt}}
+    \caption{Observed reference trajectory (2005--2021) versus all simulated scenario trajectories.}
+    \label{fig:ch4_population_all}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    % Suggested final file: figures/ch4_population_top3.pdf
+    \fbox{\rule{0pt}{2.2in}\rule{0.85\textwidth}{0pt}}
+    \caption{Focused comparison of baseline, anthropogenic-food, and combined-realistic scenarios against observed data.}
+    \label{fig:ch4_population_top3}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    % Suggested final file: figures/ch4_residuals_by_year.pdf
+    \fbox{\rule{0pt}{2.2in}\rule{0.85\textwidth}{0pt}}
+    \caption{Year-by-year residuals (simulated minus observed) for selected scenarios.}
+    \label{fig:ch4_residuals}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    % Suggested final file: figures/ch4_deaths_components_selected.pdf
+    \fbox{\rule{0pt}{2.2in}\rule{0.85\textwidth}{0pt}}
+    \caption{Deaths by cause (danger, starvation, old age) for baseline and best-fit scenarios.}
+    \label{fig:ch4_death_components}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    % Suggested final file: figures/ch4_births_vs_deaths_selected.pdf
+    \fbox{\rule{0pt}{2.2in}\rule{0.85\textwidth}{0pt}}
+    \caption{Births versus total deaths over time for baseline and best-fit scenarios.}
+    \label{fig:ch4_births_deaths}
+\end{figure}
+
+\section{Computational validation note}
+
+The current chapter uses the newly generated ecological campaign data from the Results directory. Detailed runtime benchmarking (sequential vs multithreaded vs distributed) is discussed in Chapter 3 and can be appended here with the same table/figure pattern if a dedicated benchmark rerun is performed on the final hardware.
+
+\section{Interpretation and validity limits}
+
+The most important conclusion from this campaign is comparative: in the tested schedules, food-access increase explains substantially more of the 2005--2021 rise than policy-only danger-mortality shifts.
+
+Two limits are important:
+
+\begin{enumerate}
+    \item The folders marked as weird results indicate the need for an additional reproducibility check before publication-grade claims about driver ranking.
+    \item The intervention-cull effect should be evaluated on a longer post-2021 projection horizon, because activation at year 16 leaves almost no in-window response time.
+\end{enumerate}
+
+Even with these limits, the campaign is strong enough to support a final thesis-level conclusion about which mechanisms are necessary to approach observed growth in the validated window.

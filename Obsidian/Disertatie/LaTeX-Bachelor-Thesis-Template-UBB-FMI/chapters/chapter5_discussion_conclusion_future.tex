@@ -1,0 +1,76 @@
+\chapter{Discussion, conclusion and future work}
+\label{ch:discussion_conclusion}
+
+\section{Discussion}
+
+The final campaign results provide a clear practical ranking of explanatory power in the 2005--2021 validation window.
+
+Baseline and policy-only schedules (EU 2007 protection and 2016 hunting-ban reduction of danger mortality) improve fit only marginally relative to baseline. In contrast, schedules that increase food access over time produce a much stronger trajectory match.
+
+The best single scenario in this run set is anthropogenic food:
+
+\begin{itemize}
+    \item MAE = 261.25 versus 360.32 in baseline,
+    \item RMSE = 336.27 versus 539.66 in baseline,
+    \item end population 7175 versus reference 7500 in 2021.
+\end{itemize}
+
+The combined realistic schedule is close (MAE 278.64, RMSE 344.65, end population 7194.67) but does not outperform anthropogenic food in aggregate error. This suggests that, in the current parameterization, the food pathway is the dominant contribution, while additional policy components either provide smaller gains or partially offset each other.
+
+Another important interpretation point is horizon sensitivity. The 2021 intervention-cull schedule is activated at simulation year 16, so its effect is expected mainly after the validated window. Its near-identity with baseline in 2005--2021 should therefore not be interpreted as a policy-ineffectiveness claim, but as a consequence of timing.
+
+The results also confirm the value of schedule-driven ABM for policy analysis: we can test not only whether growth occurs, but which timing and combination of drivers best reproduces observed trends.
+
+\section{Conclusion}
+
+This thesis delivers both a modeling contribution and a data-backed empirical conclusion.
+
+\subsection*{Methodological contribution}
+
+\begin{enumerate}
+    \item A spatial, agent-based brown-bear simulator with explicit demographic and environmental mechanisms.
+    \item A reproducible scenario pipeline (schedules, seeded replicates, annual post-processing, and quantitative fit metrics).
+    \item A practical workflow for comparing ecological hypotheses with controlled counterfactual experiments.
+\end{enumerate}
+
+\subsection*{Empirical conclusion for 2005--2021}
+
+Within the tested scenarios and current calibration, population growth close to the observed Romanian trajectory requires increasing food availability over time. Policy-only danger-mortality adjustments are not sufficient by themselves to reproduce the magnitude of the rise.
+
+In short, the campaign supports a multi-driver interpretation where food-access dynamics are necessary and dominant in this model version.
+
+\section{Limitations}
+
+The main limitations are:
+
+\begin{enumerate}
+    \item Scenario folders labeled as weird results indicate a remaining reproducibility check before publication-level attribution strength.
+    \item Validation uses one national annual reference trajectory; spatially explicit local validation is outside current scope.
+    \item Some late-window policy effects (especially 2021 cull) require extended-horizon runs for full impact quantification.
+\end{enumerate}
+
+These limitations constrain claim strength but do not invalidate the comparative ranking observed in the current campaign.
+
+\section{Future work}
+
+Future work should focus on five concrete directions.
+
+\begin{enumerate}
+    \item Run a post-2021 extension campaign (for example to 2026 or 2030) to measure delayed intervention-cull effects.
+    \item Recheck and rerun the anthropogenic-food and combined scenarios under a strict reproducibility protocol to eliminate possible pipeline contamination.
+    \item Add uncertainty envelopes (confidence bands over replicates) directly in the final trajectory figures.
+    \item Extend validation with additional anchors (for example independent genetic estimates) while keeping annual-series evaluation separate.
+    \item Add a dedicated benchmark rerun chapter appendix so ecological and computational conclusions are both tied to one final frozen code/data snapshot.
+\end{enumerate}
+
+\section{Final practical remarks}
+
+The thesis is now in a finishable state: numerical evidence is integrated, scenario ranking is explicit, and figure insertion points are prepared.
+
+Final submission steps are straightforward:
+
+\begin{enumerate}
+    \item insert the exported graphs into the placeholders from Chapter 4,
+    \item cross-check all table values against the final exported CSVs,
+    \item compile and polish narrative consistency (captions, references, and appendix links to schedules/results).
+\end{enumerate}

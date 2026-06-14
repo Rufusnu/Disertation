@@ -1,0 +1,70 @@
+\chapter{Introduction}
+\label{ch:introduction}
+
+\section{Context and motivation}
+
+In the last years, the brown bear population in Romania has become one of the most visible and debated wildlife-management topics in Europe. The debate is active in public media, policy documents, and scientific reports. On one side, there are concerns related to safety and conflict at settlement boundaries. On the other side, there is the scientific need to explain long-term population dynamics using measurable mechanisms instead of isolated observations.
+
+The difficulty is that many mechanisms can act at the same time: hunting-policy changes, supplemental feeding, anthropogenic food near villages, landscape transition, and seasonality. If these mechanisms are analyzed separately, interpretation may become incomplete. In this context, simulation is useful because it allows controlled experiments where each factor can be switched, scheduled, and measured in repeated runs.
+
+This project proposes a spatial agent-based simulation for brown bears, inspired by the Romanian Carpathian context and implemented in Java. The approach aims to preserve biological meaning while remaining computationally practical for large experiment batches.
+
+\section{Research problem and objectives}
+
+The core research question is the following: \emph{which mechanisms, alone or in combination, can best explain the observed increase of brown bear population in the Romanian Carpathian area during 2005--2021?}
+
+The objectives of this thesis are:
+
+\begin{enumerate}
+    \item to design an agent-based model where each bear is represented as an individual with age, sex, satiety, reproduction and movement behaviour;
+    \item to represent habitat and risk as spatially heterogeneous grid cells with food and danger dynamics;
+    \item to evaluate candidate drivers using baseline and counterfactual scenarios;
+    \item to build a reproducible experiment pipeline based on controlled random seeds, metrics recording, and parameter schedules;
+    \item to evaluate computational behaviour with emphasis on multithreaded versus distributed execution strategy.
+\end{enumerate}
+
+\section{Scope and delimitations}
+
+This thesis adopts a focused and explicit scope. The study is defined as a \textbf{Transylvania-focused case study inside the Romanian Carpathians}, with a \textbf{2005--2021 analysis window}.
+
+The purpose of the model is \textbf{explanatory counterfactual analysis}, not exact numerical forecasting. In other words, the simulation is used to compare how plausible driver combinations can reproduce the observed increase trend under explicit assumptions, rather than to claim exact future population values.
+
+This scope is chosen for three reasons:
+
+\begin{enumerate}
+    \item it matches the model granularity (local interactions, tick-based dynamics, scenario schedules);
+    \item it is scientifically more robust under real-world uncertainty in census and policy data;
+    \item it aligns with the technical contribution, where many controlled scenario replicates are required.
+\end{enumerate}
+
+Therefore, conclusions in this thesis should be interpreted as comparative explanatory evidence across scenarios, not as deterministic prediction statements.
+
+\section{Original contributions}
+
+The main contributions are both ecological and technical, and they are tightly connected.
+
+First, the ecological contribution is the integration of multiple candidate drivers inside one simulation framework. Instead of discussing one factor at a time, the project evaluates both isolated and combined effects. This allows interpretation of relative contribution and interaction effects.
+
+Second, the technical contribution is an execution strategy that is realistic for this model class. The implementation supports multithreading and distributed execution, but the thesis does not assume distributed is always faster. For this fine-grained tick-based simulation, distributed execution \emph{inside one run} can introduce communication and synchronization overhead larger than the useful work. In contrast, distributed execution is expected to be efficient for \emph{batches of independent runs}.
+
+Third, the project includes practical reproducibility components directly in code: run configurations, seeded randomness, per-tick metrics, schedule-based parameter updates, and calibration utilities.
+
+Fourth, the thesis contributes a clear modelling scope statement that keeps claims proportional to evidence: explanatory counterfactual analysis over 2005--2021 for a Transylvania-focused Carpathian case study.
+
+\section{Thesis structure}
+
+The thesis is organized in five main chapters plus references.
+
+Chapter 2 presents ecological background and related work in ABM and parallel simulation, together with the specific gap addressed by this project. Chapter 3 describes the proposed approach, including model structure, agent logic, environment representation, and execution architecture. Chapter 4 presents the evaluation design and templates used for reporting ecological and computational results. Chapter 5 discusses findings, limitations, conclusions, and future work.
+
+To reach the target manuscript size of approximately 30 pages in the current template format, the intended distribution is:
+
+\begin{itemize}
+    \item Chapter 1: 4--5 pages,
+    \item Chapter 2: 7--8 pages,
+    \item Chapter 3: 8--9 pages,
+    \item Chapter 4: 6--7 pages,
+    \item Chapter 5: 3--4 pages.
+\end{itemize}
+
+This page budget is used as a writing guide and will be refined after figures, tables, and final numerical results are inserted.

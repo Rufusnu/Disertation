@@ -1,0 +1,169 @@
+\chapter{Proposed approach}
+\label{ch:approach}
+
+\section{Model overview}
+
+The proposed solution is implemented as a spatial agent-based simulation in Java. Time is represented in discrete ticks, and one tick corresponds to a fixed fraction of a simulated year. This design allows direct control over simulation horizon and direct comparison between short-term and long-term behaviour.
+
+Each bear is modelled as an autonomous software agent with internal state and local decision logic. At population level, global behaviour is not hard-coded. It appears as an emergent result of local interactions, resource constraints, and stochastic events.
+
+At each tick, the model follows a two-stage flow:
+
+\begin{enumerate}
+    \item \textbf{Plan stage:} each agent observes its local environment and decides an action.
+    \item \textbf{Commit stage:} all action effects are applied to the shared world state.
+\end{enumerate}
+
+This separation is central for correctness and performance. Correctness is improved because all state modifications are applied in one controlled phase, while performance is improved because independent decisions are computed in parallel.
+
+\section{Problem formulation and modelling assumptions}
+
+The modelling objective is to evaluate plausible explanations for observed population increase under controlled computational experiments. In order to keep the model interpretable and executable, several assumptions are introduced.
+
+\begin{itemize}
+    \item The world is represented as a regular grid with local neighbourhood interactions.
+    \item Time advances in equal discrete ticks.
+    \item Agent perception is local, not global.
+    \item Mortality and reproduction are probabilistic but constrained by biological rules.
+    \item Environment dynamics are represented by food/danger fields and terrain categories.
+\end{itemize}
+
+These assumptions do not claim perfect realism. Their role is to balance biological plausibility with experiment reproducibility.
+
+\section{Agent state and behaviour}
+
+Each bear agent maintains attributes such as age, sex, satiety, pregnancy state, gestation progression, home-range anchor, and reproduction cooldown. Because of this, survival and reproduction are both state-dependent and time-dependent.
+
+The main behavioural outcomes include:
+
+\begin{itemize}
+    \item starvation and old-age mortality,
+    \item danger-related probabilistic mortality,
+    \item hunger-driven feeding behaviour,
+    \item local movement under food/danger/crowding/home-range trade-offs,
+    \item pregnancy and birth events under biological constraints.
+\end{itemize}
+
+The model includes seasonal effects through a hibernation window. During hibernation, metabolism and risk multipliers are modified, and active behaviours are reduced. This mechanism helps align the simulation with known brown-bear seasonal ecology.
+
+In addition, initialization logic avoids unrealistic synchronization artifacts by staggering initial female reproductive states. This is important because synchronized founding cohorts can create artificial birth waves unrelated to ecological behaviour.
+
+\section{Environment representation}
+
+The environment is represented as a grid with terrain types such as forest, field, village, road, mountain, and blocked boundary cells. Each cell maintains food and danger values. Occupancy is tracked explicitly, including male occupancy counters used for local reproductive perception.
+
+The implementation supports both random environment generation and loading of pre-processed map grids. This capability is important for the thesis because it allows two types of experiments: synthetic controlled experiments and geographically structured experiments.
+
+\section{Module-level architecture mapping}
+
+To keep the implementation understandable and maintainable, functionality is separated into modules with clear responsibilities.
+
+\begin{itemize}
+    \item \textbf{Agent module:} stores internal bear state and decision logic.
+    \item \textbf{Environment module:} exposes percept construction and state transitions.
+    \item \textbf{Simulation driver:} orchestrates tick loop, scheduling, and phase boundaries.
+    \item \textbf{Effects container:} decouples planning from state mutation.
+    \item \textbf{Experiment module:} handles run configuration, metrics output, schedules, and calibration tools.
+\end{itemize}
+
+This separation follows a practical software-engineering principle used throughout this thesis: isolate concerns so that ecological logic, execution policy, and experiment workflow can evolve independently.
+
+\section{Action effects and state commit logic}
+
+Actions are not applied directly when decided. Instead, they are written as intents into a per-tick effect container. This design decouples decision from world mutation.
+
+The effect container records, among others:
+
+\begin{itemize}
+    \item movement intents,
+    \item birth intents,
+    \item death intents with death cause,
+    \item food consumption intents,
+    \item human-conflict exposure events.
+\end{itemize}
+
+During commit, these intents are resolved in a fixed order. This order provides deterministic semantics and avoids race conditions over shared structures.
+
+An additional benefit is observability. Because intents are centralized before commit, it becomes straightforward to compute per-tick counters and export them for analysis.
+
+\section{Execution architecture and technical design}
+
+The project uses parallel planning and serial commit as a deliberate architectural choice.
+
+In planning, each agent receives a percept and decides one action. This stage is parallelized through executor tasks. In commit, actions are resolved on a single driver thread. Deaths, births, moves, food updates, and counters are then applied in consistent sequence.
+
+From software-engineering perspective, this design gives three core advantages:
+
+\begin{enumerate}
+    \item safe concurrency for agent decision-making,
+    \item consistent world-state transitions per tick,
+    \item straightforward integration of metrics, schedule hooks, and reproducibility controls.
+\end{enumerate}
+
+One practical trade-off is that deterministic commit can become a bottleneck at very high scale. This trade-off is accepted in the current version because correctness and interpretability are prioritised over aggressive low-level optimization.
+
+\section{Experiment and reproducibility pipeline}
+
+The implementation includes explicit experiment infrastructure, and this is one of the strongest practical components of the project.
+
+\begin{itemize}
+    \item run-level configuration (scenario id, run id, seed, replicate index, max ticks),
+    \item seeded random-number support for repeatability,
+    \item per-tick metrics recording (population, births, deaths, satiety, conflict events),
+    \item schedule-based parameter changes by simulation year,
+    \item calibration utilities (sampling and optimization helpers such as Latin hypercube and local search routines).
+\end{itemize}
+
+This pipeline is essential for transforming the simulator into a scientific instrument rather than only a demonstrator. It allows traceability from each reported result back to scenario setup and random seed.
+
+\section{Schedule-driven scenario modelling}
+
+A key capability of the current implementation is schedule-driven parameter change. Instead of assuming static settings over the full run, the simulator can apply time-indexed parameter updates.
+
+This enables realistic scenario construction such as:
+
+\begin{itemize}
+    \item step-change in danger-related mortality,
+    \item progressive food-supply modifications,
+    \item staged policy windows with explicit start years,
+    \item controlled stress tests for sensitivity analysis.
+\end{itemize}
+
+This mechanism is central for the thesis objective, because the target phenomenon is itself time-dependent.
+
+\section{Performance instrumentation}
+
+The simulation contains explicit timing breakdown for the main execution stages. Planning time is decomposed into task construction, worker invocation, future collection, and aggregate worker CPU time for perception/decision. Commit time is decomposed into action contribution, deaths, births, food updates, movement resolution, and bookkeeping.
+
+This instrumentation supports evidence-based discussion in Chapter 4. Instead of saying that one mode is faster in general, we can explain exactly where runtime is spent and why.
+
+\section{Design limitations and current constraints}
+
+Although the architecture is robust for bachelor-level scope, several constraints remain and should be stated explicitly.
+
+\begin{itemize}
+    \item The model still depends on a static global settings class for many parameters.
+    \item Tick synchronization imposes strict phase boundaries that can limit distributed intra-run scaling.
+    \item Some ecological processes are intentionally abstracted for tractability.
+\end{itemize}
+
+These constraints do not invalidate the approach. They define its current applicability and provide direction for future extensions.
+
+\section{Multithreading and distributed strategy}
+
+A key point of this thesis is that the project does support distributed execution, but distributed intra-run execution is not assumed to be efficient by default.
+
+Because each agent action is relatively lightweight and the model is strongly tick-synchronized, inter-node coordination can become the bottleneck. This is why performance analysis must separate the two distributed modes.
+
+Therefore, the practical strategy proposed in this thesis is:
+
+\begin{itemize}
+    \item use multithreading to accelerate one simulation run,
+    \item use distributed resources to execute many independent runs in parallel.
+\end{itemize}
+
+This strategy keeps the technical meaning of a multithreaded and distributed ABM while remaining realistic for performance and reproducibility.
+
+\section{Chapter summary}
+
+This chapter presented the full implementation approach, from modelling assumptions and module design to execution strategy and reproducibility infrastructure. The next chapter validates this approach through ecological and computational evaluation, using a structured protocol and explicit result templates.
